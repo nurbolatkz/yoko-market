@@ -49,4 +49,5 @@ lib/
   screens/      Storefront and account screens
 test/           Widget tests
 design-referrences/  Visual design reference
+dev-memory/          Short engineering change records
 ```

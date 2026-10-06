@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import 'providers/market_provider.dart';
 import 'screens/main_screen.dart';
+import 'theme/app_theme.dart';
 
 void main() {
   runApp(const YokoMarketApp());
@@ -18,15 +19,7 @@ class YokoMarketApp extends StatelessWidget {
       child: MaterialApp(
         title: 'YokoMarket',
         debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(
-            seedColor: const Color(0xFF6750F5),
-            brightness: Brightness.light,
-            surface: Colors.white,
-          ),
-          scaffoldBackgroundColor: const Color(0xFFFAF9FF),
-          useMaterial3: true,
-        ),
+        theme: AppTheme.light,
         themeMode: ThemeMode.light,
         home: const MainScreen(),
       ),
