@@ -6,7 +6,9 @@ import '../theme/app_theme.dart';
 import 'product_detail_screen.dart';
 
 class CatalogScreen extends StatelessWidget {
-  const CatalogScreen({super.key});
+  const CatalogScreen({super.key, required this.onCategorySelected});
+
+  final ValueChanged<String> onCategorySelected;
 
   @override
   Widget build(BuildContext context) {
@@ -28,7 +30,7 @@ class CatalogScreen extends StatelessWidget {
                   const SizedBox(height: 16),
                   const _HeroBanner(),
                   const SizedBox(height: 18),
-                  const _Categories(),
+                  _Categories(onSelected: onCategorySelected),
                   const SizedBox(height: 26),
                   const _SectionHeader(title: 'Популярные бренды'),
                   const SizedBox(height: 12),
@@ -200,7 +202,9 @@ class _HeroBanner extends StatelessWidget {
 }
 
 class _Categories extends StatelessWidget {
-  const _Categories();
+  const _Categories({required this.onSelected});
+
+  final ValueChanged<String> onSelected;
 
   static const items = [
     ('Подгузники', Icons.baby_changing_station_rounded, Color(0xFFDDEEFF)),
@@ -217,38 +221,46 @@ class _Categories extends StatelessWidget {
       children: items
           .map(
             (item) => Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 2),
-                child: Column(
-                  children: [
-                    AspectRatio(
-                      aspectRatio: 1,
-                      child: Container(
-                        constraints: const BoxConstraints(maxWidth: 64),
-                        decoration: BoxDecoration(
-                          color: item.$3,
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Icon(item.$2, color: AppColors.purple, size: 27),
-                      ),
-                    ),
-                    const SizedBox(height: 7),
-                    SizedBox(
-                      height: 31,
-                      child: Text(
-                        item.$1,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: AppColors.navy,
-                          fontSize: 10.5,
-                          height: 1.2,
-                          fontWeight: FontWeight.w600,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(16),
+                onTap: () => onSelected(item.$1.replaceAll('\n', ' ')),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 2),
+                  child: Column(
+                    children: [
+                      AspectRatio(
+                        aspectRatio: 1,
+                        child: Container(
+                          constraints: const BoxConstraints(maxWidth: 64),
+                          decoration: BoxDecoration(
+                            color: item.$3,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Icon(
+                            item.$2,
+                            color: AppColors.purple,
+                            size: 27,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 7),
+                      SizedBox(
+                        height: 31,
+                        child: Text(
+                          item.$1,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: AppColors.navy,
+                            fontSize: 10.5,
+                            height: 1.2,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),

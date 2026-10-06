@@ -32,6 +32,7 @@ class MarketProvider with ChangeNotifier {
       imageUrl:
           'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=600',
       category: 'Подгузники',
+      packageInfo: 'XL · 12–17 кг · 64 шт',
       rating: 4.8,
     ),
     Product(
@@ -42,6 +43,7 @@ class MarketProvider with ChangeNotifier {
       imageUrl:
           'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600',
       category: 'Подгузники',
+      packageInfo: 'L · 9–14 кг · 54 шт',
       rating: 4.6,
     ),
     Product(
@@ -52,6 +54,7 @@ class MarketProvider with ChangeNotifier {
       imageUrl:
           'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=600',
       category: 'Подгузники',
+      packageInfo: 'S · 4–8 кг · 70 шт',
       rating: 4.9,
     ),
     Product(
@@ -62,6 +65,7 @@ class MarketProvider with ChangeNotifier {
       imageUrl:
           'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=600',
       category: 'Салфетки',
+      packageInfo: '120 шт в упаковке',
       rating: 4.3,
     ),
     Product(
@@ -72,6 +76,7 @@ class MarketProvider with ChangeNotifier {
       imageUrl:
           'https://images.unsplash.com/photo-1556905055-8f358a7a47b2?w=600',
       category: 'Детская косметика',
+      packageInfo: '300 мл',
       rating: 4.7,
     ),
     Product(
@@ -82,6 +87,7 @@ class MarketProvider with ChangeNotifier {
       imageUrl:
           'https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=600',
       category: 'Бытовая химия',
+      packageInfo: '1,5 л',
       rating: 4.8,
     ),
     Product(
@@ -92,6 +98,7 @@ class MarketProvider with ChangeNotifier {
       imageUrl:
           'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=600',
       category: 'Детская косметика',
+      packageInfo: '75 мл',
       rating: 4.4,
     ),
     Product(
@@ -102,6 +109,7 @@ class MarketProvider with ChangeNotifier {
       imageUrl:
           'https://images.unsplash.com/photo-1572635196237-14b3f281503f?w=600',
       category: 'Другое',
+      packageInfo: '60 × 90 см · 30 шт',
       rating: 4.5,
     ),
   ];
@@ -128,6 +136,12 @@ class MarketProvider with ChangeNotifier {
 
   void setSearchQuery(String query) {
     _searchQuery = query;
+    notifyListeners();
+  }
+
+  void resetCatalogFilters() {
+    _searchQuery = '';
+    _selectedCategory = 'All';
     notifyListeners();
   }
 

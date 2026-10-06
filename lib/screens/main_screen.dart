@@ -5,6 +5,7 @@ import '../providers/market_provider.dart';
 import '../theme/app_theme.dart';
 import 'catalog_screen.dart';
 import 'cart_screen.dart';
+import 'product_catalog_screen.dart';
 import 'profile_screen.dart';
 
 class MainScreen extends StatefulWidget {
@@ -17,21 +18,28 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
 
-  final List<Widget> _screens = const [
-    CatalogScreen(),
-    _SimpleSection(title: 'Каталог', icon: Icons.grid_view_rounded),
-    CartScreen(),
-    _SimpleSection(title: 'Избранное', icon: Icons.favorite_border_rounded),
-    ProfileScreen(),
-  ];
-
   @override
   Widget build(BuildContext context) {
     final marketProvider = Provider.of<MarketProvider>(context);
     final cartCount = marketProvider.cartItemCount;
+    final screens = [
+      CatalogScreen(
+        onCategorySelected: (category) {
+          marketProvider.setSelectedCategory(category);
+          setState(() => _currentIndex = 1);
+        },
+      ),
+      const ProductCatalogScreen(),
+      const CartScreen(),
+      const _SimpleSection(
+        title: 'Избранное',
+        icon: Icons.favorite_border_rounded,
+      ),
+      const ProfileScreen(),
+    ];
 
     return Scaffold(
-      body: IndexedStack(index: _currentIndex, children: _screens),
+      body: IndexedStack(index: _currentIndex, children: screens),
       bottomNavigationBar: SafeArea(
         top: false,
         child: NavigationBar(
