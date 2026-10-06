@@ -58,6 +58,7 @@ void main() {
     await tester.pump();
 
     expect(find.text('8 товаров'), findsOneWidget);
+    expect(find.text('Фото скоро'), findsWidgets);
     expect(tester.takeException(), isNull);
 
     await tester.tap(find.byKey(const Key('add-p1')));

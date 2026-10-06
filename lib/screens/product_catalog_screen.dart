@@ -139,7 +139,7 @@ class _ProductCatalogScreenState extends State<ProductCatalogScreen> {
                       gridDelegate:
                           const SliverGridDelegateWithFixedCrossAxisCount(
                             crossAxisCount: 2,
-                            mainAxisExtent: 278,
+                            mainAxisExtent: 294,
                             crossAxisSpacing: 12,
                             mainAxisSpacing: 12,
                           ),
@@ -209,24 +209,13 @@ class CatalogProductCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               SizedBox(
-                height: 118,
+                height: 130,
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
                     ClipRRect(
                       borderRadius: BorderRadius.circular(14),
-                      child: Image.network(
-                        product.imageUrl,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, _, _) => Container(
-                          color: AppColors.purpleSoft,
-                          child: const Icon(
-                            Icons.inventory_2_outlined,
-                            size: 48,
-                            color: AppColors.purple,
-                          ),
-                        ),
-                      ),
+                      child: _ProductImage(imagePath: product.imageUrl),
                     ),
                     Positioned(
                       top: 6,
@@ -262,8 +251,8 @@ class CatalogProductCard extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   color: AppColors.navy,
-                  fontSize: 13,
-                  height: 1.18,
+                  fontSize: 14,
+                  height: 1.22,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -274,8 +263,9 @@ class CatalogProductCard extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   color: AppColors.navyMuted,
-                  fontSize: 11,
-                  height: 1.15,
+                  fontSize: 12,
+                  height: 1.2,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
               const Spacer(),
@@ -314,6 +304,74 @@ class CatalogProductCard extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _ProductImage extends StatelessWidget {
+  const _ProductImage({required this.imagePath});
+
+  final String imagePath;
+
+  @override
+  Widget build(BuildContext context) {
+    if (imagePath.isEmpty) {
+      return const _PhotoPlaceholder();
+    }
+
+    if (imagePath.startsWith('assets/')) {
+      return ColoredBox(
+        color: const Color(0xFFF6F4FB),
+        child: Padding(
+          padding: const EdgeInsets.all(10),
+          child: Image.asset(
+            imagePath,
+            fit: BoxFit.contain,
+            errorBuilder: (_, _, _) => const _PhotoPlaceholder(),
+          ),
+        ),
+      );
+    }
+
+    return ColoredBox(
+      color: const Color(0xFFF6F4FB),
+      child: Padding(
+        padding: const EdgeInsets.all(10),
+        child: Image.network(
+          imagePath,
+          fit: BoxFit.contain,
+          errorBuilder: (_, _, _) => const _PhotoPlaceholder(),
+        ),
+      ),
+    );
+  }
+}
+
+class _PhotoPlaceholder extends StatelessWidget {
+  const _PhotoPlaceholder();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: const Color(0xFFF1EFF7),
+      alignment: Alignment.center,
+      padding: const EdgeInsets.all(12),
+      child: const Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.photo_outlined, size: 38, color: AppColors.navyMuted),
+          SizedBox(height: 6),
+          Text(
+            'Фото скоро',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: AppColors.navyMuted,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
       ),
     );
   }
