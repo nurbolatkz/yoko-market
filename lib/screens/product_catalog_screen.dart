@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../models/product.dart';
 import '../providers/market_provider.dart';
 import '../theme/app_theme.dart';
+import '../widgets/product_image.dart';
 import 'product_detail_screen.dart';
 
 class ProductCatalogScreen extends StatefulWidget {
@@ -293,7 +294,10 @@ class CatalogProductCard extends StatelessWidget {
                   children: [
                     ClipRRect(
                       borderRadius: BorderRadius.circular(14),
-                      child: _ProductImage(imagePath: product.imageUrl),
+                      child: ProductImage(
+                        key: Key('catalog-product-image-${product.id}'),
+                        imageUrl: product.imageUrl,
+                      ),
                     ),
                     Positioned(
                       top: 6,
@@ -398,74 +402,6 @@ class CatalogProductCard extends StatelessWidget {
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _ProductImage extends StatelessWidget {
-  const _ProductImage({required this.imagePath});
-
-  final String imagePath;
-
-  @override
-  Widget build(BuildContext context) {
-    if (imagePath.isEmpty) {
-      return const _PhotoPlaceholder();
-    }
-
-    if (imagePath.startsWith('assets/')) {
-      return ColoredBox(
-        color: const Color(0xFFF6F4FB),
-        child: Padding(
-          padding: const EdgeInsets.all(10),
-          child: Image.asset(
-            imagePath,
-            fit: BoxFit.contain,
-            errorBuilder: (_, _, _) => const _PhotoPlaceholder(),
-          ),
-        ),
-      );
-    }
-
-    return ColoredBox(
-      color: const Color(0xFFF6F4FB),
-      child: Padding(
-        padding: const EdgeInsets.all(10),
-        child: Image.network(
-          imagePath,
-          fit: BoxFit.contain,
-          errorBuilder: (_, _, _) => const _PhotoPlaceholder(),
-        ),
-      ),
-    );
-  }
-}
-
-class _PhotoPlaceholder extends StatelessWidget {
-  const _PhotoPlaceholder();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: const Color(0xFFF1EFF7),
-      alignment: Alignment.center,
-      padding: const EdgeInsets.all(12),
-      child: const Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.photo_outlined, size: 38, color: AppColors.navyMuted),
-          SizedBox(height: 6),
-          Text(
-            'Фото скоро',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: AppColors.navyMuted,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
       ),
     );
   }

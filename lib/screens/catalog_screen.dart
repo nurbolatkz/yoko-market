@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../providers/market_provider.dart';
 import '../theme/app_theme.dart';
+import '../widgets/product_image.dart';
 import 'product_detail_screen.dart';
 
 class CatalogScreen extends StatelessWidget {
@@ -459,16 +460,14 @@ class _ProductGrid extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
-                    child: Container(
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        color: AppColors.purpleSoft,
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: const Icon(
-                        Icons.inventory_2_outlined,
-                        size: 56,
-                        color: AppColors.purple,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(14),
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: ProductImage(
+                          key: Key('home-product-image-${product.id}'),
+                          imageUrl: product.imageUrl,
+                        ),
                       ),
                     ),
                   ),

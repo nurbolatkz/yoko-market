@@ -5,6 +5,7 @@ import 'package:yokomarket/models/product.dart';
 import 'package:yokomarket/models/product_category.dart';
 import 'package:yokomarket/providers/market_provider.dart';
 import 'package:yokomarket/services/catalog_api.dart';
+import 'package:yokomarket/widgets/product_image.dart';
 
 void main() {
   test('Product parses the confirmed Django catalog fields', () {
@@ -38,6 +39,33 @@ void main() {
 
     expect(find.byType(TextField), findsOneWidget);
     expect(find.text('YokoSun'), findsWidgets);
+  });
+
+  testWidgets('Home and Catalog use the same product image URL', (
+    WidgetTester tester,
+  ) async {
+    await _pumpTestApp(tester);
+
+    final homeScroll = find.byKey(const Key('home-scroll'));
+    for (var index = 0; index < 4; index++) {
+      await tester.drag(homeScroll, const Offset(0, -250));
+      await tester.pump();
+      if (find.byKey(const Key('home-product-image-p1')).evaluate().isNotEmpty) {
+        break;
+      }
+    }
+    final homeImage = tester.widget<ProductImage>(
+      find.byKey(const Key('home-product-image-p1')),
+    );
+
+    await tester.tap(find.text('Каталог'));
+    await tester.pumpAndSettle();
+
+    final catalogImage = tester.widget<ProductImage>(
+      find.byKey(const Key('catalog-product-image-p1')),
+    );
+    expect(homeImage.imageUrl, isNotEmpty);
+    expect(catalogImage.imageUrl, homeImage.imageUrl);
   });
 
   testWidgets('Home scroll reaches the last product and returns to top', (
@@ -152,7 +180,7 @@ class _FakeCatalogDataSource implements CatalogDataSource {
           : 'Подгузники YokoSun $number',
       description: 'Тестовый товар API',
       price: 1000 + number * 100,
-      imageUrl: '',
+      imageUrl: number == 1 ? 'https://example.test/product-1.png' : '',
       category: isWipes ? 'Салфетки' : 'Подгузники',
       packageInfo: '$number шт',
       inStock: number != 8,
