@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -15,6 +17,7 @@ class ProductCatalogScreen extends StatefulWidget {
 
 class _ProductCatalogScreenState extends State<ProductCatalogScreen> {
   late final TextEditingController _searchController;
+  Timer? _searchDebounce;
 
   @override
   void initState() {
@@ -36,6 +39,7 @@ class _ProductCatalogScreenState extends State<ProductCatalogScreen> {
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     _searchController.dispose();
     super.dispose();
   }
@@ -63,7 +67,14 @@ class _ProductCatalogScreenState extends State<ProductCatalogScreen> {
               child: TextField(
                 key: const Key('catalog-search'),
                 controller: _searchController,
-                onChanged: provider.setSearchQuery,
+                onChanged: (value) {
+                  provider.setSearchQuery(value);
+                  _searchDebounce?.cancel();
+                  _searchDebounce = Timer(
+                    const Duration(milliseconds: 350),
+                    provider.loadProducts,
+                  );
+                },
                 decoration: InputDecoration(
                   hintText: 'Поиск товаров...',
                   prefixIcon: const Icon(Icons.search_rounded),
@@ -74,6 +85,7 @@ class _ProductCatalogScreenState extends State<ProductCatalogScreen> {
                           onPressed: () {
                             _searchController.clear();
                             provider.setSearchQuery('');
+                            provider.loadProducts();
                           },
                           icon: const Icon(Icons.close_rounded),
                         ),
@@ -98,7 +110,10 @@ class _ProductCatalogScreenState extends State<ProductCatalogScreen> {
                   return ChoiceChip(
                     label: Text(category == 'All' ? 'Все' : category),
                     selected: selected,
-                    onSelected: (_) => provider.setSelectedCategory(category),
+                    onSelected: (_) {
+                      provider.setSelectedCategory(category);
+                      provider.loadProducts();
+                    },
                     selectedColor: AppColors.purple,
                     backgroundColor: AppColors.surface,
                     side: BorderSide(
@@ -125,38 +140,55 @@ class _ProductCatalogScreenState extends State<ProductCatalogScreen> {
               ),
             ),
             Expanded(
-              child: products.isEmpty
+              child: provider.catalogLoading && products.isEmpty
+                  ? const Center(child: CircularProgressIndicator())
+                  : provider.catalogError != null
+                  ? _CatalogLoadError(
+                      message: provider.catalogError!,
+                      onRetry: provider.loadCatalog,
+                    )
+                  : products.isEmpty
                   ? _EmptyCatalog(
                       onReset: () {
                         _searchController.clear();
                         provider.resetCatalogFilters();
                       },
                     )
-                  : GridView.builder(
-                      key: const Key('catalog-grid'),
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 96),
-                      itemCount: products.length,
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            mainAxisExtent: 294,
-                            crossAxisSpacing: 12,
-                            mainAxisSpacing: 12,
-                          ),
-                      itemBuilder: (context, index) => CatalogProductCard(
-                        product: products[index],
-                        isFavorite: provider.isFavorite(products[index].id),
-                        onFavorite: () =>
-                            provider.toggleFavorite(products[index].id),
-                        onAdd: () => provider.addToCart(products[index]),
-                        onOpen: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) =>
-                                ProductDetailScreen(product: products[index]),
+                  : Stack(
+                      children: [
+                        GridView.builder(
+                          key: const Key('catalog-grid'),
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 96),
+                          itemCount: products.length,
+                          gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 2,
+                                mainAxisExtent: 310,
+                                crossAxisSpacing: 12,
+                                mainAxisSpacing: 12,
+                              ),
+                          itemBuilder: (context, index) => CatalogProductCard(
+                            product: products[index],
+                            isFavorite: provider.isFavorite(products[index].id),
+                            onFavorite: () =>
+                                provider.toggleFavorite(products[index].id),
+                            onAdd: () => provider.addToCart(products[index]),
+                            onOpen: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => ProductDetailScreen(
+                                  product: products[index],
+                                ),
+                              ),
+                            ),
                           ),
                         ),
-                      ),
+                        if (provider.catalogLoading)
+                          const Align(
+                            alignment: Alignment.topCenter,
+                            child: LinearProgressIndicator(),
+                          ),
+                      ],
                     ),
             ),
           ],
@@ -257,15 +289,31 @@ class CatalogProductCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 4),
+              if (product.packageInfo.isNotEmpty)
+                Text(
+                  product.packageInfo,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.navyMuted,
+                    fontSize: 12,
+                    height: 1.2,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              const SizedBox(height: 5),
               Text(
-                product.packageInfo,
-                maxLines: 2,
+                product.inStock
+                    ? 'В наличии: ${product.stockQuantity}'
+                    : 'Нет в наличии',
+                maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: AppColors.navyMuted,
-                  fontSize: 12,
-                  height: 1.2,
-                  fontWeight: FontWeight.w500,
+                style: TextStyle(
+                  color: product.inStock
+                      ? const Color(0xFF23804A)
+                      : Colors.red.shade700,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
               const Spacer(),
@@ -286,7 +334,7 @@ class CatalogProductCard extends StatelessWidget {
                   IconButton.filled(
                     key: Key('add-${product.id}'),
                     tooltip: 'Добавить в корзину',
-                    onPressed: onAdd,
+                    onPressed: product.inStock ? onAdd : null,
                     style: IconButton.styleFrom(
                       backgroundColor: AppColors.purple,
                       foregroundColor: Colors.white,
@@ -372,6 +420,44 @@ class _PhotoPlaceholder extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _CatalogLoadError extends StatelessWidget {
+  const _CatalogLoadError({required this.message, required this.onRetry});
+
+  final String message;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.cloud_off_rounded,
+              size: 52,
+              color: AppColors.purple,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 14),
+            FilledButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('Повторить'),
+            ),
+          ],
+        ),
       ),
     );
   }

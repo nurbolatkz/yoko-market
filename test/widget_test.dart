@@ -1,11 +1,40 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:yokomarket/main.dart';
+import 'package:yokomarket/models/product.dart';
+import 'package:yokomarket/models/product_category.dart';
+import 'package:yokomarket/providers/market_provider.dart';
+import 'package:yokomarket/services/catalog_api.dart';
 
 void main() {
+  test('Product parses the confirmed Django catalog fields', () {
+    final product = Product.fromApiJson({
+      'id': 'api-id',
+      'name': 'YokoSun Premium',
+      'description': 'Описание',
+      'size': 'M',
+      'price': 5990,
+      'promo_price': 5490,
+      'category': 'Подгузники',
+      'stock_qty': 12,
+      'is_active': true,
+      'rating': 4.8,
+      'hero_url': '/media/product.png',
+      'images': <dynamic>[],
+    });
+
+    expect(product.id, 'api-id');
+    expect(product.title, 'YokoSun Premium');
+    expect(product.price, 5490);
+    expect(product.packageInfo, 'M');
+    expect(product.inStock, isTrue);
+    expect(product.stockQuantity, 12);
+    expect(product.imageUrl, contains('/media/product.png'));
+  });
+
   testWidgets('YokoMarket app smoke test', (WidgetTester tester) async {
     // Build our app and trigger a frame.
-    await tester.pumpWidget(const YokoMarketApp());
+    await _pumpTestApp(tester);
 
     expect(find.byType(TextField), findsOneWidget);
     expect(find.text('YokoSun'), findsWidgets);
@@ -19,8 +48,7 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    await tester.pumpWidget(const YokoMarketApp());
-    await tester.pump();
+    await _pumpTestApp(tester);
 
     expect(tester.takeException(), isNull);
     expect(find.text('Главная'), findsOneWidget);
@@ -53,7 +81,7 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    await tester.pumpWidget(const YokoMarketApp());
+    await _pumpTestApp(tester);
     await tester.tap(find.text('Каталог'));
     await tester.pump();
 
@@ -69,11 +97,11 @@ void main() {
       find.byKey(const Key('catalog-search')),
       'нет такого',
     );
-    await tester.pump();
+    await tester.pumpAndSettle();
     expect(find.text('Товары не найдены'), findsOneWidget);
 
     await tester.tap(find.text('Сбросить фильтры'));
-    await tester.pump();
+    await tester.pumpAndSettle();
     expect(find.text('8 товаров'), findsOneWidget);
 
     final grid = find.byKey(const Key('catalog-grid'));
@@ -89,13 +117,69 @@ void main() {
   testWidgets('Home category opens Catalog with the category selected', (
     WidgetTester tester,
   ) async {
-    await tester.pumpWidget(const YokoMarketApp());
+    await _pumpTestApp(tester);
 
     await tester.tap(find.text('Салфетки'));
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     expect(find.text('Каталог'), findsWidgets);
     expect(find.text('1 товар'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+}
+
+Future<void> _pumpTestApp(WidgetTester tester) async {
+  await tester.pumpWidget(
+    YokoMarketApp(
+      marketProvider: MarketProvider(
+        catalogDataSource: _FakeCatalogDataSource(),
+      ),
+    ),
+  );
+  await tester.pumpAndSettle();
+}
+
+class _FakeCatalogDataSource implements CatalogDataSource {
+  final List<Product> _products = List.generate(8, (index) {
+    final number = index + 1;
+    final isWipes = number == 4;
+    return Product(
+      id: 'p$number',
+      title: number == 8
+          ? 'Одноразовые пеленки'
+          : isWipes
+          ? 'Влажные салфетки Aura'
+          : 'Подгузники YokoSun $number',
+      description: 'Тестовый товар API',
+      price: 1000 + number * 100,
+      imageUrl: '',
+      category: isWipes ? 'Салфетки' : 'Подгузники',
+      packageInfo: '$number шт',
+      inStock: number != 8,
+      stockQuantity: number == 8 ? 0 : number,
+    );
+  });
+
+  @override
+  Future<List<ProductCategory>> getCategories() async => const [
+    ProductCategory(id: '1', name: 'Подгузники'),
+    ProductCategory(id: '2', name: 'Салфетки'),
+  ];
+
+  @override
+  Future<List<Product>> getProducts({
+    String? category,
+    String? search,
+    int limit = 100,
+    int offset = 0,
+  }) async {
+    return _products.where((product) {
+      final categoryMatches = category == null || product.category == category;
+      final searchMatches =
+          search == null ||
+          search.isEmpty ||
+          product.title.toLowerCase().contains(search.toLowerCase());
+      return categoryMatches && searchMatches;
+    }).toList();
+  }
 }

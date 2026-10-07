@@ -1,11 +1,17 @@
 import 'package:flutter/foundation.dart';
 
-import '../models/product.dart';
 import '../models/cart_item.dart';
+import '../models/product.dart';
+import '../models/product_category.dart';
 import '../models/user_profile.dart';
+import '../services/catalog_api.dart';
 
 class MarketProvider with ChangeNotifier {
-  // User Profile
+  MarketProvider({CatalogDataSource? catalogDataSource})
+    : _catalogDataSource = catalogDataSource ?? CatalogApi();
+
+  final CatalogDataSource _catalogDataSource;
+
   UserProfile _user = UserProfile(
     name: 'Alex Johnson',
     email: 'alex.johnson@yokomarket.kz',
@@ -22,97 +28,20 @@ class MarketProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // Products Catalog (Dummy Data)
-  final List<Product> _products = [
-    Product(
-      id: 'p1',
-      title: 'Подгузники YokoSun',
-      description: 'Мягкие дышащие подгузники с надежной защитой до 12 часов.',
-      price: 5990,
-      imageUrl: '',
-      category: 'Подгузники',
-      packageInfo: 'XL · 12–17 кг · 64 шт',
-      rating: 4.8,
-    ),
-    Product(
-      id: 'p2',
-      title: 'Подгузники Futari',
-      description: 'Комфортная посадка и нежный внутренний слой для чувствительной кожи.',
-      price: 5490,
-      imageUrl: '',
-      category: 'Подгузники',
-      packageInfo: 'L · 9–14 кг · 54 шт',
-      rating: 4.6,
-    ),
-    Product(
-      id: 'p3',
-      title: 'Подгузники YokoSun Premium',
-      description: 'Премиальная серия для новорожденных весом от 4 до 8 кг.',
-      price: 4990,
-      imageUrl: '',
-      category: 'Подгузники',
-      packageInfo: 'S · 4–8 кг · 70 шт',
-      rating: 4.9,
-    ),
-    Product(
-      id: 'p4',
-      title: 'Влажные салфетки Aura',
-      description: 'Детские гипоаллергенные салфетки без спирта и парабенов.',
-      price: 1290,
-      imageUrl: '',
-      category: 'Салфетки',
-      packageInfo: '120 шт в упаковке',
-      rating: 4.3,
-    ),
-    Product(
-      id: 'p5',
-      title: 'Детский шампунь Comfy',
-      description: 'Бережная формула без слез для ежедневного ухода.',
-      price: 1890,
-      imageUrl: '',
-      category: 'Детская косметика',
-      packageInfo: '300 мл',
-      rating: 4.7,
-    ),
-    Product(
-      id: 'p6',
-      title: 'Гель для стирки детского белья',
-      description: 'Эффективно удаляет пятна и полностью выполаскивается.',
-      price: 3290,
-      imageUrl: '',
-      category: 'Бытовая химия',
-      packageInfo: '1,5 л',
-      rating: 4.8,
-    ),
-    Product(
-      id: 'p7',
-      title: 'Крем под подгузник YokoSun',
-      description: 'Успокаивает и защищает нежную кожу малыша.',
-      price: 1690,
-      imageUrl: '',
-      category: 'Детская косметика',
-      packageInfo: '75 мл',
-      rating: 4.4,
-    ),
-    Product(
-      id: 'p8',
-      title: 'Одноразовые пеленки',
-      description: 'Мягкие впитывающие пеленки, 30 штук в упаковке.',
-      price: 3790,
-      imageUrl: '',
-      category: 'Другое',
-      packageInfo: '60 × 90 см · 30 шт',
-      rating: 4.5,
-    ),
+  List<Product> _products = const [];
+  List<ProductCategory> _catalogCategories = const [];
+  bool _catalogLoading = false;
+  String? _catalogError;
+  int _requestVersion = 0;
+
+  List<Product> get products => List.unmodifiable(_products);
+  bool get catalogLoading => _catalogLoading;
+  String? get catalogError => _catalogError;
+
+  List<String> get categories => [
+    'All',
+    ..._catalogCategories.map((category) => category.name).toSet(),
   ];
-
-  List<Product> get products => _products;
-
-  // Categories
-  List<String> get categories {
-    final set = {'All', ..._products.map((p) => p.category)};
-    return set.toList();
-  }
 
   String _selectedCategory = 'All';
   String get selectedCategory => _selectedCategory;
@@ -122,7 +51,6 @@ class MarketProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // Search
   String _searchQuery = '';
   String get searchQuery => _searchQuery;
 
@@ -131,39 +59,83 @@ class MarketProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  void resetCatalogFilters() {
+  List<Product> get filteredProducts => _products;
+
+  Future<void> loadCatalog() async {
+    final requestVersion = ++_requestVersion;
+    _catalogLoading = true;
+    _catalogError = null;
+    notifyListeners();
+
+    try {
+      final results = await Future.wait<dynamic>([
+        _catalogDataSource.getCategories(),
+        _catalogDataSource.getProducts(
+          category: _apiCategory,
+          search: _searchQuery,
+        ),
+      ]);
+      if (requestVersion != _requestVersion) return;
+      _catalogCategories = results[0] as List<ProductCategory>;
+      _products = results[1] as List<Product>;
+    } catch (_) {
+      if (requestVersion != _requestVersion) return;
+      _products = const [];
+      _catalogError = 'Не удалось загрузить товары. Проверьте подключение.';
+    } finally {
+      if (requestVersion == _requestVersion) {
+        _catalogLoading = false;
+        notifyListeners();
+      }
+    }
+  }
+
+  Future<void> loadProducts() async {
+    final requestVersion = ++_requestVersion;
+    _catalogLoading = true;
+    _catalogError = null;
+    notifyListeners();
+
+    try {
+      final products = await _catalogDataSource.getProducts(
+        category: _apiCategory,
+        search: _searchQuery,
+      );
+      if (requestVersion != _requestVersion) return;
+      _products = products;
+    } catch (_) {
+      if (requestVersion != _requestVersion) return;
+      _products = const [];
+      _catalogError = 'Не удалось загрузить товары. Проверьте подключение.';
+    } finally {
+      if (requestVersion == _requestVersion) {
+        _catalogLoading = false;
+        notifyListeners();
+      }
+    }
+  }
+
+  String? get _apiCategory =>
+      _selectedCategory == 'All' ? null : _selectedCategory;
+
+  Future<void> resetCatalogFilters() async {
     _searchQuery = '';
     _selectedCategory = 'All';
-    notifyListeners();
+    await loadProducts();
   }
 
-  List<Product> get filteredProducts {
-    return _products.where((product) {
-      final matchesCategory =
-          _selectedCategory == 'All' || product.category == _selectedCategory;
-      final matchesSearch =
-          product.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          product.description.toLowerCase().contains(
-            _searchQuery.toLowerCase(),
-          );
-      return matchesCategory && matchesSearch;
-    }).toList();
-  }
-
-  // Cart
   final Map<String, CartItem> _cartItems = {};
 
   List<CartItem> get cartItems => _cartItems.values.toList();
 
-  int get cartItemCount {
-    return _cartItems.values.fold(0, (sum, item) => sum + item.quantity);
-  }
+  int get cartItemCount =>
+      _cartItems.values.fold(0, (sum, item) => sum + item.quantity);
 
-  double get cartTotalAmount {
-    return _cartItems.values.fold(0.0, (sum, item) => sum + item.totalPrice);
-  }
+  double get cartTotalAmount =>
+      _cartItems.values.fold(0.0, (sum, item) => sum + item.totalPrice);
 
   void addToCart(Product product) {
+    if (!product.inStock) return;
     if (_cartItems.containsKey(product.id)) {
       _cartItems[product.id]!.quantity += 1;
     } else {
@@ -193,11 +165,9 @@ class MarketProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // Wishlist
-  final Set<String> _wishlistIds = {'p1', 'p3'};
+  final Set<String> _wishlistIds = {};
 
   Set<String> get wishlistIds => _wishlistIds;
-
   bool isFavorite(String productId) => _wishlistIds.contains(productId);
 
   void toggleFavorite(String productId) {
@@ -209,7 +179,6 @@ class MarketProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  List<Product> get favoriteProducts {
-    return _products.where((p) => _wishlistIds.contains(p.id)).toList();
-  }
+  List<Product> get favoriteProducts =>
+      _products.where((product) => _wishlistIds.contains(product.id)).toList();
 }

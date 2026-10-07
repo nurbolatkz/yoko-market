@@ -29,6 +29,15 @@ flutter pub get
 flutter run
 ```
 
+The catalog API base URL is configurable at build time. The confirmed default
+is read-only for catalog requests:
+
+```bash
+flutter run --dart-define=API_BASE=https://dashboard.yoko-sun.kz/api/v1
+```
+
+Use the same `API_BASE` define to point development builds at a test environment.
+
 ## Quality checks
 
 ```bash

@@ -10,12 +10,14 @@ void main() {
 }
 
 class YokoMarketApp extends StatelessWidget {
-  const YokoMarketApp({super.key});
+  const YokoMarketApp({super.key, this.marketProvider});
+
+  final MarketProvider? marketProvider;
 
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
-      create: (_) => MarketProvider(),
+      create: (_) => (marketProvider ?? MarketProvider())..loadCatalog(),
       child: MaterialApp(
         title: 'YokoMarket',
         debugShowCheckedModeBanner: false,

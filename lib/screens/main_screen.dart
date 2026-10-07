@@ -26,6 +26,7 @@ class _MainScreenState extends State<MainScreen> {
       CatalogScreen(
         onCategorySelected: (category) {
           marketProvider.setSelectedCategory(category);
+          marketProvider.loadProducts();
           setState(() => _currentIndex = 1);
         },
       ),

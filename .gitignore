@@ -65,3 +65,6 @@ key.properties
 
 # Widget Preview related
 .widget_preview/
+
+# Local reference project used for API contract inspection
+/yokosun_flutter/
