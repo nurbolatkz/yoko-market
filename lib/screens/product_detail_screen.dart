@@ -134,7 +134,7 @@ class ProductDetailScreen extends StatelessWidget {
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       color: theme.colorScheme.surfaceContainerHighest
-                          .withOpacity(0.5),
+                          .withValues(alpha: 0.5),
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: const Column(

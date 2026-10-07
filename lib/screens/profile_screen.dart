@@ -64,7 +64,9 @@ class ProfileScreen extends StatelessWidget {
                       Text(
                         user.email,
                         style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onPrimary.withOpacity(0.8),
+                          color: theme.colorScheme.onPrimary.withValues(
+                            alpha: 0.8,
+                          ),
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -74,7 +76,7 @@ class ProfileScreen extends StatelessWidget {
                           vertical: 4,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
+                          color: Colors.white.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
@@ -107,7 +109,7 @@ class ProfileScreen extends StatelessWidget {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
               side: BorderSide(
-                color: theme.colorScheme.outlineVariant.withOpacity(0.5),
+                color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
               ),
             ),
             child: Column(
@@ -160,8 +162,8 @@ class ProfileScreen extends StatelessWidget {
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: theme.colorScheme.outlineVariant.withOpacity(
-                              0.5,
+                            color: theme.colorScheme.outlineVariant.withValues(
+                              alpha: 0.5,
                             ),
                           ),
                         ),
@@ -249,7 +251,7 @@ class ProfileScreen extends StatelessWidget {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
               side: BorderSide(
-                color: theme.colorScheme.outlineVariant.withOpacity(0.5),
+                color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
               ),
             ),
             child: Column(
