@@ -192,6 +192,16 @@ class MarketProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  void addToCartWithQty(Product product, int qty) {
+    if (!product.inStock || qty <= 0) return;
+    if (_cartItems.containsKey(product.id)) {
+      _cartItems[product.id]!.quantity += qty;
+    } else {
+      _cartItems[product.id] = CartItem(product: product, quantity: qty);
+    }
+    notifyListeners();
+  }
+
   void removeFromCart(String productId) {
     _cartItems.remove(productId);
     notifyListeners();

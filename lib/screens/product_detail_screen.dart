@@ -3,168 +3,143 @@ import 'package:provider/provider.dart';
 
 import '../models/product.dart';
 import '../providers/market_provider.dart';
+import '../theme/app_theme.dart';
+import '../widgets/product_image.dart';
 
-class ProductDetailScreen extends StatelessWidget {
+class ProductDetailScreen extends StatefulWidget {
+  const ProductDetailScreen({super.key, required this.product});
+
   final Product product;
 
-  const ProductDetailScreen({super.key, required this.product});
+  @override
+  State<ProductDetailScreen> createState() => _ProductDetailScreenState();
+}
+
+class _ProductDetailScreenState extends State<ProductDetailScreen> {
+  int _qty = 1;
+
+  Product get _product => widget.product;
+
+  void _increment() {
+    if (_qty < _product.stockQuantity) setState(() => _qty++);
+  }
+
+  void _decrement() {
+    if (_qty > 1) setState(() => _qty--);
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final marketProvider = Provider.of<MarketProvider>(context);
-    final isFav = marketProvider.isFavorite(product.id);
+    final provider = context.watch<MarketProvider>();
+    final isFav = provider.isFavorite(_product.id);
 
     return Scaffold(
       body: CustomScrollView(
         slivers: [
           SliverAppBar(
-            expandedHeight: 350,
+            expandedHeight: 300,
             pinned: true,
             flexibleSpace: FlexibleSpaceBar(
-              background: Stack(
-                fit: StackFit.expand,
-                children: [
-                  Image.network(
-                    product.imageUrl,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => Container(
-                      color: theme.colorScheme.surfaceContainerHighest,
-                      child: Center(
-                        child: Icon(
-                          Icons.image_not_supported,
-                          size: 64,
-                          color: theme.colorScheme.outline,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [Colors.transparent, Colors.black54],
-                        stops: [0.7, 1.0],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+              background: ProductImage(imageUrl: _product.imageUrl),
             ),
             actions: [
               IconButton(
+                tooltip: isFav ? 'Убрать из избранного' : 'В избранное',
                 icon: CircleAvatar(
-                  backgroundColor: Colors.white70,
+                  backgroundColor: Colors.white.withValues(alpha: .85),
                   child: Icon(
-                    isFav ? Icons.favorite : Icons.favorite_border,
-                    color: isFav ? Colors.red : Colors.black87,
+                    isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                    color: isFav ? AppColors.purple : Colors.black87,
+                    size: 22,
                   ),
                 ),
-                onPressed: () {
-                  marketProvider.toggleFavorite(product.id);
-                },
+                onPressed: () => provider.toggleFavorite(_product.id),
               ),
               const SizedBox(width: 8),
             ],
           ),
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.all(20.0),
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Chip(
-                        label: Text(product.category),
-                        backgroundColor: theme.colorScheme.primaryContainer,
-                        labelStyle: TextStyle(
-                          color: theme.colorScheme.onPrimaryContainer,
-                        ),
+                  if (_product.category.isNotEmpty)
+                    Chip(
+                      label: Text(_product.category),
+                      backgroundColor: theme.colorScheme.primaryContainer,
+                      labelStyle: TextStyle(
+                        color: theme.colorScheme.onPrimaryContainer,
                       ),
-                      Row(
-                        children: [
-                          const Icon(Icons.star, color: Colors.amber, size: 20),
-                          const SizedBox(width: 4),
-                          Text(
-                            '${product.rating}',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
+                    ),
+                  const SizedBox(height: 10),
                   Text(
-                    product.title,
+                    _product.title,
                     style: theme.textTheme.headlineSmall?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  if (_product.packageInfo.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      _product.packageInfo,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 14),
                   Text(
-                    '\$${product.price.toStringAsFixed(2)}',
+                    '${_product.price.toStringAsFixed(0)} ₸',
                     style: theme.textTheme.headlineMedium?.copyWith(
                       color: theme.colorScheme.primary,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(height: 24),
-                  Text(
-                    'About this item',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    product.description,
-                    style: theme.textTheme.bodyLarge?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                      height: 1.5,
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-                  // Feature highlights
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.surfaceContainerHighest
-                          .withValues(alpha: 0.5),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: const Column(
-                      children: [
-                        Row(
-                          children: [
-                            Icon(Icons.local_shipping_outlined, size: 20),
-                            SizedBox(width: 12),
-                            Text('Free Express Delivery available'),
-                          ],
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Icon(
+                        _product.inStock
+                            ? Icons.check_circle_outline_rounded
+                            : Icons.cancel_outlined,
+                        size: 18,
+                        color: _product.inStock
+                            ? const Color(0xFF23804A)
+                            : Colors.red.shade700,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        _product.inStock
+                            ? 'В наличии: ${_product.stockQuantity} шт.'
+                            : 'Нет в наличии',
+                        style: TextStyle(
+                          color: _product.inStock
+                              ? const Color(0xFF23804A)
+                              : Colors.red.shade700,
+                          fontWeight: FontWeight.w700,
                         ),
-                        SizedBox(height: 12),
-                        Row(
-                          children: [
-                            Icon(Icons.verified_outlined, size: 20),
-                            SizedBox(width: 12),
-                            Text('1 Year Official YokoMarket Warranty'),
-                          ],
-                        ),
-                        SizedBox(height: 12),
-                        Row(
-                          children: [
-                            Icon(Icons.assignment_return_outlined, size: 20),
-                            SizedBox(width: 12),
-                            Text('30-day hassle-free returns'),
-                          ],
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
+                  if (_product.description.isNotEmpty) ...[
+                    const SizedBox(height: 24),
+                    Text(
+                      'Описание',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _product.description,
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                        height: 1.5,
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 100),
                 ],
               ),
@@ -172,68 +147,112 @@ class ProductDetailScreen extends StatelessWidget {
           ),
         ],
       ),
-      bottomSheet: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surface,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black12,
-              blurRadius: 10,
-              offset: const Offset(0, -5),
+      bottomSheet: _BottomBar(
+        qty: _qty,
+        onIncrement: _product.inStock && _qty < _product.stockQuantity
+            ? _increment
+            : null,
+        onDecrement: _qty > 1 ? _decrement : null,
+        onAddToCart: _product.inStock
+            ? () {
+                provider.addToCartWithQty(_product, _qty);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('В корзину: $_qty шт.'),
+                    duration: const Duration(seconds: 2),
+                  ),
+                );
+              }
+            : null,
+      ),
+    );
+  }
+}
+
+class _BottomBar extends StatelessWidget {
+  const _BottomBar({
+    required this.qty,
+    required this.onIncrement,
+    required this.onDecrement,
+    required this.onAddToCart,
+  });
+
+  final int qty;
+  final VoidCallback? onIncrement;
+  final VoidCallback? onDecrement;
+  final VoidCallback? onAddToCart;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        boxShadow: const [
+          BoxShadow(
+            color: Colors.black12,
+            blurRadius: 10,
+            offset: Offset(0, -5),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: Row(
+          children: [
+            DecoratedBox(
+              decoration: BoxDecoration(
+                border: Border.all(color: AppColors.border),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    key: const Key('detail-qty-dec'),
+                    visualDensity: VisualDensity.compact,
+                    icon: const Icon(Icons.remove_rounded),
+                    onPressed: onDecrement,
+                  ),
+                  SizedBox(
+                    width: 32,
+                    child: Text(
+                      '$qty',
+                      key: const Key('detail-qty-label'),
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    key: const Key('detail-qty-inc'),
+                    visualDensity: VisualDensity.compact,
+                    icon: const Icon(Icons.add_rounded),
+                    onPressed: onIncrement,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: FilledButton.icon(
+                key: const Key('detail-add-to-cart'),
+                onPressed: onAddToCart,
+                icon: const Icon(Icons.shopping_cart_outlined),
+                label: const Text('В корзину'),
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
             ),
           ],
-        ),
-        child: SafeArea(
-          child: Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () {
-                    marketProvider.addToCart(product);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Added ${product.title} to cart!'),
-                        duration: const Duration(seconds: 2),
-                        action: SnackBarAction(label: 'UNDO', onPressed: () {}),
-                      ),
-                    );
-                  },
-                  icon: const Icon(Icons.shopping_cart_outlined),
-                  label: const Text('Add to Cart'),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: FilledButton.icon(
-                  onPressed: () {
-                    marketProvider.addToCart(product);
-                    Navigator.pop(context);
-                    // Navigate or show checkout message
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Proceeding to checkout...'),
-                      ),
-                    );
-                  },
-                  icon: const Icon(Icons.flash_on),
-                  label: const Text('Buy Now'),
-                  style: FilledButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
         ),
       ),
     );
