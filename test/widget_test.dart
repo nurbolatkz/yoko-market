@@ -170,7 +170,7 @@ class _FakeCatalogDataSource implements CatalogDataSource {
   Future<List<Product>> getProducts({
     String? category,
     String? search,
-    int limit = 100,
+    int limit = 50,
     int offset = 0,
   }) async {
     return _products.where((product) {

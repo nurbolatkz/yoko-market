@@ -12,6 +12,8 @@ class MarketProvider with ChangeNotifier {
 
   final CatalogDataSource _catalogDataSource;
 
+  static const int _pageSize = 50;
+
   UserProfile _user = UserProfile(
     name: 'Alex Johnson',
     email: 'alex.johnson@yokomarket.kz',
@@ -34,9 +36,15 @@ class MarketProvider with ChangeNotifier {
   String? _catalogError;
   int _requestVersion = 0;
 
+  int _loadedOffset = 0;
+  bool _hasMore = false;
+  bool _isLoadingMore = false;
+
   List<Product> get products => List.unmodifiable(_products);
   bool get catalogLoading => _catalogLoading;
   String? get catalogError => _catalogError;
+  bool get hasMore => _hasMore;
+  bool get isLoadingMore => _isLoadingMore;
 
   List<String> get categories => [
     'All',
@@ -65,6 +73,8 @@ class MarketProvider with ChangeNotifier {
     final requestVersion = ++_requestVersion;
     _catalogLoading = true;
     _catalogError = null;
+    _loadedOffset = 0;
+    _hasMore = false;
     notifyListeners();
 
     try {
@@ -73,15 +83,21 @@ class MarketProvider with ChangeNotifier {
         _catalogDataSource.getProducts(
           category: _apiCategory,
           search: _searchQuery,
+          limit: _pageSize,
+          offset: 0,
         ),
       ]);
       if (requestVersion != _requestVersion) return;
       _catalogCategories = results[0] as List<ProductCategory>;
-      _products = results[1] as List<Product>;
+      final page = results[1] as List<Product>;
+      _products = page;
+      _loadedOffset = page.length;
+      _hasMore = page.length == _pageSize;
     } catch (_) {
       if (requestVersion != _requestVersion) return;
       _products = const [];
       _catalogError = 'Не удалось загрузить товары. Проверьте подключение.';
+      _hasMore = false;
     } finally {
       if (requestVersion == _requestVersion) {
         _catalogLoading = false;
@@ -94,24 +110,56 @@ class MarketProvider with ChangeNotifier {
     final requestVersion = ++_requestVersion;
     _catalogLoading = true;
     _catalogError = null;
+    _loadedOffset = 0;
+    _hasMore = false;
     notifyListeners();
 
     try {
-      final products = await _catalogDataSource.getProducts(
+      final page = await _catalogDataSource.getProducts(
         category: _apiCategory,
         search: _searchQuery,
+        limit: _pageSize,
+        offset: 0,
       );
       if (requestVersion != _requestVersion) return;
-      _products = products;
+      _products = page;
+      _loadedOffset = page.length;
+      _hasMore = page.length == _pageSize;
     } catch (_) {
       if (requestVersion != _requestVersion) return;
       _products = const [];
       _catalogError = 'Не удалось загрузить товары. Проверьте подключение.';
+      _hasMore = false;
     } finally {
       if (requestVersion == _requestVersion) {
         _catalogLoading = false;
         notifyListeners();
       }
+    }
+  }
+
+  Future<void> loadMoreProducts() async {
+    if (_isLoadingMore || !_hasMore || _catalogLoading) return;
+    _isLoadingMore = true;
+    final requestVersion = _requestVersion;
+    notifyListeners();
+
+    try {
+      final more = await _catalogDataSource.getProducts(
+        category: _apiCategory,
+        search: _searchQuery,
+        limit: _pageSize,
+        offset: _loadedOffset,
+      );
+      if (_requestVersion != requestVersion) return;
+      _products = [..._products, ...more];
+      _loadedOffset += more.length;
+      _hasMore = more.length == _pageSize;
+    } catch (_) {
+      // Existing products remain visible; user can scroll up and retry.
+    } finally {
+      _isLoadingMore = false;
+      notifyListeners();
     }
   }
 

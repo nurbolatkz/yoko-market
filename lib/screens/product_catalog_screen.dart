@@ -17,12 +17,25 @@ class ProductCatalogScreen extends StatefulWidget {
 
 class _ProductCatalogScreenState extends State<ProductCatalogScreen> {
   late final TextEditingController _searchController;
+  late final ScrollController _scrollController;
   Timer? _searchDebounce;
 
   @override
   void initState() {
     super.initState();
     _searchController = TextEditingController();
+    _scrollController = ScrollController()..addListener(_onScroll);
+  }
+
+  void _onScroll() {
+    if (!mounted) return;
+    final pos = _scrollController.position;
+    if (pos.pixels >= pos.maxScrollExtent - 300) {
+      final provider = context.read<MarketProvider>();
+      if (!provider.catalogLoading && !provider.isLoadingMore && provider.hasMore) {
+        provider.loadMoreProducts();
+      }
+    }
   }
 
   @override
@@ -41,6 +54,7 @@ class _ProductCatalogScreenState extends State<ProductCatalogScreen> {
   void dispose() {
     _searchDebounce?.cancel();
     _searchController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -156,31 +170,63 @@ class _ProductCatalogScreenState extends State<ProductCatalogScreen> {
                     )
                   : Stack(
                       children: [
-                        GridView.builder(
-                          key: const Key('catalog-grid'),
-                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 96),
-                          itemCount: products.length,
-                          gridDelegate:
-                              const SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: 2,
-                                mainAxisExtent: 310,
-                                crossAxisSpacing: 12,
-                                mainAxisSpacing: 12,
-                              ),
-                          itemBuilder: (context, index) => CatalogProductCard(
-                            product: products[index],
-                            isFavorite: provider.isFavorite(products[index].id),
-                            onFavorite: () =>
-                                provider.toggleFavorite(products[index].id),
-                            onAdd: () => provider.addToCart(products[index]),
-                            onOpen: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => ProductDetailScreen(
-                                  product: products[index],
+                        RefreshIndicator(
+                          onRefresh: () =>
+                              context.read<MarketProvider>().loadCatalog(),
+                          child: CustomScrollView(
+                            key: const Key('catalog-grid'),
+                            controller: _scrollController,
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            slivers: [
+                              SliverPadding(
+                                padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+                                sliver: SliverGrid(
+                                  gridDelegate:
+                                      const SliverGridDelegateWithFixedCrossAxisCount(
+                                        crossAxisCount: 2,
+                                        mainAxisExtent: 310,
+                                        crossAxisSpacing: 12,
+                                        mainAxisSpacing: 12,
+                                      ),
+                                  delegate: SliverChildBuilderDelegate(
+                                    (context, index) => CatalogProductCard(
+                                      product: products[index],
+                                      isFavorite: provider.isFavorite(
+                                        products[index].id,
+                                      ),
+                                      onFavorite: () => provider.toggleFavorite(
+                                        products[index].id,
+                                      ),
+                                      onAdd: () =>
+                                          provider.addToCart(products[index]),
+                                      onOpen: () => Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => ProductDetailScreen(
+                                            product: products[index],
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    childCount: products.length,
+                                  ),
                                 ),
                               ),
-                            ),
+                              if (provider.isLoadingMore)
+                                const SliverToBoxAdapter(
+                                  child: Padding(
+                                    padding: EdgeInsets.symmetric(vertical: 16),
+                                    child: Center(
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              const SliverToBoxAdapter(
+                                child: SizedBox(height: 96),
+                              ),
+                            ],
                           ),
                         ),
                         if (provider.catalogLoading)

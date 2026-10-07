@@ -10,7 +10,7 @@ abstract interface class CatalogDataSource {
   Future<List<Product>> getProducts({
     String? category,
     String? search,
-    int limit = 100,
+    int limit = 50,
     int offset = 0,
   });
 }
@@ -33,8 +33,10 @@ class CatalogApi implements CatalogDataSource {
   @override
   Future<List<ProductCategory>> getCategories() async {
     final response = await _dio.get<dynamic>('/categories/public');
+    // Only top-level category names are valid as ?category= filter values.
+    // Subcategory names live in Product.subcategory, not Product.category,
+    // so flattening them into the filter list would produce empty results.
     return _listOfMaps(response.data)
-        .expand(_flattenCategoryMaps)
         .map(ProductCategory.fromJson)
         .where((category) => category.name.isNotEmpty)
         .toList();
@@ -44,7 +46,7 @@ class CatalogApi implements CatalogDataSource {
   Future<List<Product>> getProducts({
     String? category,
     String? search,
-    int limit = 100,
+    int limit = 50,
     int offset = 0,
   }) async {
     final response = await _dio.get<dynamic>(
@@ -65,16 +67,4 @@ class CatalogApi implements CatalogDataSource {
 List<Map<String, dynamic>> _listOfMaps(dynamic data) {
   if (data is! List) return const [];
   return data.whereType<Map<String, dynamic>>().toList();
-}
-
-Iterable<Map<String, dynamic>> _flattenCategoryMaps(
-  Map<String, dynamic> category,
-) sync* {
-  yield category;
-  final children = category['subcategories'];
-  if (children is List) {
-    for (final child in children.whereType<Map<String, dynamic>>()) {
-      yield* _flattenCategoryMaps(child);
-    }
-  }
 }
