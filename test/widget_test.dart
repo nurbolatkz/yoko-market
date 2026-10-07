@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:yokomarket/main.dart';
 import 'package:yokomarket/models/product.dart';
 import 'package:yokomarket/models/product_category.dart';
@@ -157,6 +158,7 @@ void main() {
 }
 
 Future<void> _pumpTestApp(WidgetTester tester) async {
+  SharedPreferences.setMockInitialValues({});
   await tester.pumpWidget(
     YokoMarketApp(
       marketProvider: MarketProvider(

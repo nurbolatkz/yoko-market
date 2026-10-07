@@ -31,7 +31,7 @@ class _MainScreenState extends State<MainScreen> {
         },
       ),
       const ProductCatalogScreen(),
-      const CartScreen(),
+      CartScreen(onGoToCatalog: () => setState(() => _currentIndex = 1)),
       const _SimpleSection(
         title: 'Избранное',
         icon: Icons.favorite_border_rounded,

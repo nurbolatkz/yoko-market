@@ -25,6 +25,32 @@ class Product {
     this.rating = 4.5,
   });
 
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'title': title,
+    'description': description,
+    'price': price,
+    'imageUrl': imageUrl,
+    'category': category,
+    'packageInfo': packageInfo,
+    'inStock': inStock,
+    'stockQuantity': stockQuantity,
+    'rating': rating,
+  };
+
+  factory Product.fromCartJson(Map<String, dynamic> json) => Product(
+    id: json['id'] as String? ?? '',
+    title: json['title'] as String? ?? '',
+    description: json['description'] as String? ?? '',
+    price: _asDouble(json['price']),
+    imageUrl: json['imageUrl'] as String? ?? '',
+    category: json['category'] as String? ?? '',
+    packageInfo: json['packageInfo'] as String? ?? '',
+    inStock: json['inStock'] as bool? ?? true,
+    stockQuantity: _asInt(json['stockQuantity']),
+    rating: _asDouble(json['rating']),
+  );
+
   factory Product.fromApiJson(Map<String, dynamic> json) {
     final stockQuantity = _asInt(
       json['stock_qty'] ?? (json['in_stock'] == false ? 0 : 1),

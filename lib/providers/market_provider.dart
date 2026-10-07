@@ -1,4 +1,7 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/cart_item.dart';
 import '../models/product.dart';
@@ -8,11 +11,14 @@ import '../services/catalog_api.dart';
 
 class MarketProvider with ChangeNotifier {
   MarketProvider({CatalogDataSource? catalogDataSource})
-    : _catalogDataSource = catalogDataSource ?? CatalogApi();
+    : _catalogDataSource = catalogDataSource ?? CatalogApi() {
+    _loadCart();
+  }
 
   final CatalogDataSource _catalogDataSource;
 
   static const int _pageSize = 50;
+  static const String _cartKey = 'cart_v1';
 
   UserProfile _user = UserProfile(
     name: 'Alex Johnson',
@@ -172,6 +178,8 @@ class MarketProvider with ChangeNotifier {
     await loadProducts();
   }
 
+  // ── Cart ──────────────────────────────────────────────────────────────────
+
   final Map<String, CartItem> _cartItems = {};
 
   List<CartItem> get cartItems => _cartItems.values.toList();
@@ -182,46 +190,93 @@ class MarketProvider with ChangeNotifier {
   double get cartTotalAmount =>
       _cartItems.values.fold(0.0, (sum, item) => sum + item.totalPrice);
 
+  /// Returns how many units of [product] the cart already holds.
+  int cartQuantityFor(String productId) =>
+      _cartItems[productId]?.quantity ?? 0;
+
   void addToCart(Product product) {
     if (!product.inStock) return;
+    final current = cartQuantityFor(product.id);
+    if (current >= product.stockQuantity) return;
     if (_cartItems.containsKey(product.id)) {
       _cartItems[product.id]!.quantity += 1;
     } else {
       _cartItems[product.id] = CartItem(product: product);
     }
     notifyListeners();
+    _saveCart();
   }
 
   void addToCartWithQty(Product product, int qty) {
     if (!product.inStock || qty <= 0) return;
+    final current = cartQuantityFor(product.id);
+    final allowed = (product.stockQuantity - current).clamp(0, qty);
+    if (allowed <= 0) return;
     if (_cartItems.containsKey(product.id)) {
-      _cartItems[product.id]!.quantity += qty;
+      _cartItems[product.id]!.quantity += allowed;
     } else {
-      _cartItems[product.id] = CartItem(product: product, quantity: qty);
+      _cartItems[product.id] = CartItem(product: product, quantity: allowed);
     }
     notifyListeners();
+    _saveCart();
   }
 
   void removeFromCart(String productId) {
     _cartItems.remove(productId);
     notifyListeners();
+    _saveCart();
   }
 
   void updateQuantity(String productId, int quantity) {
-    if (_cartItems.containsKey(productId)) {
-      if (quantity <= 0) {
-        _cartItems.remove(productId);
-      } else {
-        _cartItems[productId]!.quantity = quantity;
-      }
-      notifyListeners();
+    if (!_cartItems.containsKey(productId)) return;
+    final item = _cartItems[productId]!;
+    if (quantity <= 0) {
+      _cartItems.remove(productId);
+    } else {
+      item.quantity = quantity.clamp(1, item.product.stockQuantity);
     }
+    notifyListeners();
+    _saveCart();
   }
 
   void clearCart() {
     _cartItems.clear();
     notifyListeners();
+    _saveCart();
   }
+
+  Future<void> _loadCart() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_cartKey);
+      if (raw == null || raw.isEmpty) return;
+      final list = jsonDecode(raw) as List<dynamic>;
+      final loaded = <String, CartItem>{};
+      for (final entry in list) {
+        final item = CartItem.fromJson(entry as Map<String, dynamic>);
+        if (item.product.id.isNotEmpty) {
+          loaded[item.product.id] = item;
+        }
+      }
+      if (loaded.isNotEmpty) {
+        _cartItems.addAll(loaded);
+        notifyListeners();
+      }
+    } catch (_) {
+      // SharedPreferences unavailable (test env) or data corrupted — start fresh
+    }
+  }
+
+  void _saveCart() {
+    SharedPreferences.getInstance()
+        .then((prefs) => prefs.setString(
+          _cartKey,
+          jsonEncode(_cartItems.values.map((i) => i.toJson()).toList()),
+        ))
+        .catchError((_) {});
+  }
+
+  // ── Favourites ────────────────────────────────────────────────────────────
 
   final Set<String> _wishlistIds = {};
 
