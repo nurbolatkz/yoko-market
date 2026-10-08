@@ -6,7 +6,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/cart_item.dart';
 import '../models/product.dart';
 import '../models/product_category.dart';
-import '../models/user_profile.dart';
 import '../services/catalog_api.dart';
 
 class MarketProvider with ChangeNotifier {
@@ -19,22 +18,6 @@ class MarketProvider with ChangeNotifier {
 
   static const int _pageSize = 50;
   static const String _cartKey = 'cart_v1';
-
-  UserProfile _user = UserProfile(
-    name: 'Alex Johnson',
-    email: 'alex.johnson@yokomarket.kz',
-    phone: '+7 (777) 123-45-67',
-    address: 'Abay Avenue 45, Almaty, Kazakhstan',
-    avatarUrl:
-        'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300',
-  );
-
-  UserProfile get user => _user;
-
-  void updateUser(UserProfile updatedUser) {
-    _user = updatedUser;
-    notifyListeners();
-  }
 
   List<Product> _products = const [];
   List<ProductCategory> _catalogCategories = const [];

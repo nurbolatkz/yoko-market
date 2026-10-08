@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../models/cart_item.dart';
+import '../providers/auth_provider.dart';
 import '../providers/market_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/product_image.dart';
+import 'auth/phone_screen.dart';
 
 class CartScreen extends StatelessWidget {
   const CartScreen({super.key, this.onGoToCatalog});
@@ -299,6 +301,22 @@ class _SummaryBar extends StatelessWidget {
   final double total;
   final MarketProvider provider;
 
+  void _onCheckout(BuildContext context) {
+    final auth = context.read<AuthProvider>();
+    if (!auth.isAuthenticated) {
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const PhoneScreen()),
+      );
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Оформление заказа скоро будет доступно'),
+        duration: Duration(seconds: 2),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -340,14 +358,7 @@ class _SummaryBar extends StatelessWidget {
             const SizedBox(height: 16),
             FilledButton(
               key: const Key('cart-checkout-btn'),
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Оформление заказа скоро будет доступно'),
-                    duration: Duration(seconds: 2),
-                  ),
-                );
-              },
+              onPressed: () => _onCheckout(context),
               style: FilledButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(

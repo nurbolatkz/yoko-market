@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../models/user_profile.dart';
+import '../providers/auth_provider.dart';
 import '../providers/market_provider.dart';
+import '../theme/app_theme.dart';
+import 'auth/phone_screen.dart';
 import 'product_detail_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -10,33 +12,120 @@ class ProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final auth = context.watch<AuthProvider>();
+
+    if (auth.state == AuthState.unknown) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (!auth.isAuthenticated) {
+      return _GuestView(
+        onLogin: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const PhoneScreen()),
+        ),
+      );
+    }
+
+    return _AuthenticatedView(auth: auth);
+  }
+}
+
+class _GuestView extends StatelessWidget {
+  const _GuestView({required this.onLogin});
+
+  final VoidCallback onLogin;
+
+  @override
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final marketProvider = Provider.of<MarketProvider>(context);
-    final user = marketProvider.user;
-    final wishlist = marketProvider.favoriteProducts;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'My Profile',
-          style: TextStyle(fontWeight: FontWeight.bold),
+        title: const Text('Профиль', style: TextStyle(fontWeight: FontWeight.bold)),
+      ),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.person_outline_rounded,
+                size: 72,
+                color: AppColors.purple,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Войдите в аккаунт',
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Чтобы отслеживать заказы и накапливать бонусы',
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 32),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: onLogin,
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text('Войти', style: TextStyle(fontSize: 16)),
+                ),
+              ),
+            ],
+          ),
         ),
+      ),
+    );
+  }
+}
+
+class _AuthenticatedView extends StatelessWidget {
+  const _AuthenticatedView({required this.auth});
+
+  final AuthProvider auth;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final user = auth.user!;
+    final wishlist = context.watch<MarketProvider>().favoriteProducts;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Профиль', style: TextStyle(fontWeight: FontWeight.bold)),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.edit_outlined),
-            onPressed: () => _showEditProfileDialog(context, marketProvider),
+          TextButton.icon(
+            onPressed: () => _confirmLogout(context, auth),
+            icon: const Icon(Icons.logout, size: 18),
+            label: const Text('Выйти'),
           ),
         ],
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // User Card
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [theme.colorScheme.primary, theme.colorScheme.tertiary],
+                colors: [
+                  theme.colorScheme.primary,
+                  theme.colorScheme.tertiary,
+                ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -46,7 +135,15 @@ class ProfileScreen extends StatelessWidget {
               children: [
                 CircleAvatar(
                   radius: 36,
-                  backgroundImage: NetworkImage(user.avatarUrl),
+                  backgroundColor: Colors.white.withValues(alpha: 0.2),
+                  child: Text(
+                    _initials(user.displayName),
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -54,7 +151,7 @@ class ProfileScreen extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        user.name,
+                        user.displayName,
                         style: theme.textTheme.titleLarge?.copyWith(
                           color: theme.colorScheme.onPrimary,
                           fontWeight: FontWeight.bold,
@@ -62,43 +159,67 @@ class ProfileScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        user.email,
+                        user.phone,
                         style: theme.textTheme.bodyMedium?.copyWith(
                           color: theme.colorScheme.onPrimary.withValues(
-                            alpha: 0.8,
+                            alpha: 0.85,
                           ),
                         ),
                       ),
-                      const SizedBox(height: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          'VIP Member',
-                          style: TextStyle(
-                            color: theme.colorScheme.onPrimary,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
+                      if (user.loyaltyTierLabel != null) ...[
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            user.loyaltyTierLabel!,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
-                      ),
+                      ],
                     ],
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 24),
-
-          // Contact & Shipping info
+          const SizedBox(height: 16),
+          if (user.bonusBalance > 0)
+            Card(
+              elevation: 0,
+              color: AppColors.purpleSoft,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: ListTile(
+                leading: const Icon(Icons.stars_rounded, color: AppColors.purple),
+                title: const Text(
+                  'Бонусный баланс',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+                trailing: Text(
+                  '${user.bonusBalance} ₸',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: AppColors.purple,
+                  ),
+                ),
+              ),
+            ),
+          const SizedBox(height: 16),
           Text(
-            'Account Details',
+            'Данные аккаунта',
             style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.bold,
             ),
@@ -116,239 +237,116 @@ class ProfileScreen extends StatelessWidget {
               children: [
                 ListTile(
                   leading: const Icon(Icons.phone_outlined),
-                  title: const Text('Phone Number'),
+                  title: const Text('Телефон'),
                   subtitle: Text(user.phone),
                 ),
-                const Divider(height: 1, indent: 56),
-                ListTile(
-                  leading: const Icon(Icons.location_on_outlined),
-                  title: const Text('Delivery Address'),
-                  subtitle: Text(user.address),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 24),
-
-          // Wishlist Section
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Wishlist (${wishlist.length})',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              TextButton(onPressed: () {}, child: const Text('View All')),
-            ],
-          ),
-          const SizedBox(height: 8),
-          wishlist.isEmpty
-              ? const Padding(
-                  padding: EdgeInsets.all(16.0),
-                  child: Center(child: Text('No favorite items yet.')),
-                )
-              : SizedBox(
-                  height: 180,
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: wishlist.length,
-                    itemBuilder: (context, index) {
-                      final product = wishlist[index];
-                      return Container(
-                        width: 130,
-                        margin: const EdgeInsets.only(right: 12),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: theme.colorScheme.outlineVariant.withValues(
-                              alpha: 0.5,
-                            ),
-                          ),
-                        ),
-                        child: InkWell(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) =>
-                                    ProductDetailScreen(product: product),
-                              ),
-                            );
-                          },
-                          borderRadius: BorderRadius.circular(12),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              ClipRRect(
-                                borderRadius: const BorderRadius.vertical(
-                                  top: Radius.circular(12),
-                                ),
-                                child: Image.network(
-                                  product.imageUrl,
-                                  height: 100,
-                                  width: double.infinity,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) =>
-                                      Container(
-                                        height: 100,
-                                        color: theme
-                                            .colorScheme
-                                            .surfaceContainerHighest,
-                                        child: Icon(
-                                          Icons.image_not_supported,
-                                          color: theme.colorScheme.outline,
-                                        ),
-                                      ),
-                                ),
-                              ),
-                              Padding(
-                                padding: const EdgeInsets.all(8.0),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      product.title,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      '\$${product.price.toStringAsFixed(2)}',
-                                      style: TextStyle(
-                                        color: theme.colorScheme.primary,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
+                if (user.address != null && user.address!.isNotEmpty) ...[
+                  const Divider(height: 1, indent: 56),
+                  ListTile(
+                    leading: const Icon(Icons.location_on_outlined),
+                    title: const Text('Адрес доставки'),
+                    subtitle: Text(user.address!),
                   ),
-                ),
-          const SizedBox(height: 24),
-
-          // Menu Options
-          Text(
-            'Preferences & Support',
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Card(
-            elevation: 0,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-              side: BorderSide(
-                color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
-              ),
-            ),
-            child: Column(
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.shopping_bag_outlined),
-                  title: const Text('My Orders'),
-                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                  onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('No active orders')),
-                    );
-                  },
-                ),
-                const Divider(height: 1, indent: 56),
-                ListTile(
-                  leading: const Icon(Icons.payment_outlined),
-                  title: const Text('Payment Methods'),
-                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                  onTap: () {},
-                ),
-                const Divider(height: 1, indent: 56),
-                ListTile(
-                  leading: const Icon(Icons.settings_outlined),
-                  title: const Text('App Settings'),
-                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                  onTap: () {},
-                ),
-                const Divider(height: 1, indent: 56),
-                ListTile(
-                  leading: const Icon(Icons.help_outline),
-                  title: const Text('Help & Support'),
-                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                  onTap: () {},
-                ),
+                ],
               ],
             ),
           ),
+          if (wishlist.isNotEmpty) ...[
+            const SizedBox(height: 24),
+            Text(
+              'Избранное (${wishlist.length})',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              height: 160,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                itemCount: wishlist.length,
+                itemBuilder: (context, index) {
+                  final product = wishlist[index];
+                  return GestureDetector(
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ProductDetailScreen(product: product),
+                      ),
+                    ),
+                    child: Container(
+                      width: 120,
+                      margin: const EdgeInsets.only(right: 12),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: theme.colorScheme.outlineVariant.withValues(
+                            alpha: 0.5,
+                          ),
+                        ),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(8),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              product.title,
+                              maxLines: 3,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 12,
+                              ),
+                            ),
+                            const Spacer(),
+                            Text(
+                              '${product.price.toStringAsFixed(0)} ₸',
+                              style: TextStyle(
+                                color: theme.colorScheme.primary,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
           const SizedBox(height: 32),
         ],
       ),
     );
   }
 
-  void _showEditProfileDialog(BuildContext context, MarketProvider provider) {
-    final nameController = TextEditingController(text: provider.user.name);
-    final phoneController = TextEditingController(text: provider.user.phone);
-    final addressController = TextEditingController(
-      text: provider.user.address,
-    );
+  String _initials(String name) {
+    final parts = name.trim().split(RegExp(r'\s+'));
+    if (parts.length >= 2) {
+      return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+    }
+    return name.isNotEmpty ? name[0].toUpperCase() : '?';
+  }
 
-    showDialog(
+  void _confirmLogout(BuildContext context, AuthProvider auth) {
+    showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Edit Profile'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameController,
-                decoration: const InputDecoration(labelText: 'Name'),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: phoneController,
-                decoration: const InputDecoration(labelText: 'Phone'),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: addressController,
-                decoration: const InputDecoration(labelText: 'Address'),
-              ),
-            ],
-          ),
-        ),
+        title: const Text('Выйти из аккаунта?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
+            child: const Text('Отмена'),
           ),
           FilledButton(
             onPressed: () {
-              final updated = UserProfile(
-                name: nameController.text,
-                email: provider.user.email,
-                phone: phoneController.text,
-                address: addressController.text,
-                avatarUrl: provider.user.avatarUrl,
-              );
-              provider.updateUser(updated);
+              auth.logout();
               Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Profile updated successfully!')),
-              );
             },
-            child: const Text('Save'),
+            child: const Text('Выйти'),
           ),
         ],
       ),

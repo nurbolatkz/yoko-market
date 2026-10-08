@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'providers/auth_provider.dart';
 import 'providers/market_provider.dart';
 import 'screens/main_screen.dart';
 import 'theme/app_theme.dart';
@@ -16,8 +17,15 @@ class YokoMarketApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => (marketProvider ?? MarketProvider())..loadCatalog(),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider<AuthProvider>(
+          create: (_) => AuthProvider()..init(),
+        ),
+        ChangeNotifierProvider<MarketProvider>(
+          create: (_) => (marketProvider ?? MarketProvider())..loadCatalog(),
+        ),
+      ],
       child: MaterialApp(
         title: 'YokoMarket',
         debugShowCheckedModeBanner: false,
