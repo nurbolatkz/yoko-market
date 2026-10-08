@@ -62,6 +62,7 @@ class _PhoneScreenState extends State<PhoneScreen> {
     return switch (detail) {
       'invalid_phone' => 'Неверный формат номера телефона.',
       'too_many_requests' => 'Слишком много запросов. Подождите минуту.',
+      'sms_not_configured' => 'SMS-сервис временно недоступен. Обратитесь в поддержку.',
       _ => 'Ошибка соединения. Проверьте сеть.',
     };
   }

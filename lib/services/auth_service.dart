@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
@@ -19,6 +21,11 @@ class AuthService {
   static const _storage = FlutterSecureStorage();
   static const _accessKey = 'yoko_access';
   static const _refreshKey = 'yoko_refresh';
+
+  // Serialises concurrent callers so only one HTTP refresh is in-flight at a time.
+  // Single-use refresh tokens mean a second parallel attempt would send the already-
+  // rotated token, getting a 401 and erroneously clearing the freshly-saved pair.
+  Completer<String?>? _refreshInFlight;
 
   Future<int> requestOtp(String phone) async {
     final resp = await _dio.post<dynamic>(
@@ -43,6 +50,25 @@ class AuthService {
   }
 
   Future<String?> tryRefresh() async {
+    // If a refresh is already in flight, piggyback on it instead of starting another.
+    if (_refreshInFlight != null) return _refreshInFlight!.future;
+
+    final completer = Completer<String?>();
+    _refreshInFlight = completer;
+
+    try {
+      final result = await _doRefresh();
+      completer.complete(result);
+      return result;
+    } catch (e, st) {
+      completer.completeError(e, st);
+      rethrow;
+    } finally {
+      if (_refreshInFlight == completer) _refreshInFlight = null;
+    }
+  }
+
+  Future<String?> _doRefresh() async {
     final refreshToken = await _storage.read(key: _refreshKey);
     if (refreshToken == null) return null;
     try {
@@ -57,6 +83,8 @@ class AuthService {
       return newAccess;
     } on DioException catch (e) {
       if ((e.response?.statusCode ?? 0) == 401) {
+        // Refresh token is invalid or expired — clear both tokens so the next
+        // app start presents the login screen rather than looping on 401s.
         await clearTokens();
       }
       return null;

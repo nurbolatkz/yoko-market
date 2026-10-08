@@ -24,23 +24,35 @@ class OtpScreen extends StatefulWidget {
 }
 
 class _OtpScreenState extends State<OtpScreen> {
+  // Backend constants — kept in sync with mobile_auth.py:
+  //   _OTP_RATE_LIMIT = 5 per 60 s → resend cooldown = 60 s
+  //   _OTP_TTL = 300 s              → passed in via widget.ttl
+  static const int _resendDelay = 60;
+
   final _controller = TextEditingController();
 
   bool _loading = false;
   bool _resending = false;
   bool _tooManyAttempts = false;
   String? _error;
-  int _resendCountdown = 60;
+
+  // Two separate counters managed by a single timer.
+  // _ttlSeconds    — how long the current code is still valid (starts from widget.ttl = 300).
+  // _resendSeconds — rate-limit cooldown before another OTP can be requested (starts from 60).
+  late int _ttlSeconds;
+  int _resendSeconds = _resendDelay;
   Timer? _timer;
 
   @override
   void initState() {
     super.initState();
-    _startCountdown();
+    _ttlSeconds = widget.ttl;
+    _startTimers();
   }
 
-  void _startCountdown() {
-    _resendCountdown = 60;
+  void _startTimers([int? newTtl]) {
+    _ttlSeconds = newTtl ?? widget.ttl;
+    _resendSeconds = _resendDelay;
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 1), (t) {
       if (!mounted) {
@@ -48,11 +60,9 @@ class _OtpScreenState extends State<OtpScreen> {
         return;
       }
       setState(() {
-        if (_resendCountdown > 0) {
-          _resendCountdown--;
-        } else {
-          t.cancel();
-        }
+        if (_ttlSeconds > 0) _ttlSeconds--;
+        if (_resendSeconds > 0) _resendSeconds--;
+        if (_ttlSeconds == 0 && _resendSeconds == 0) t.cancel();
       });
     });
   }
@@ -66,7 +76,9 @@ class _OtpScreenState extends State<OtpScreen> {
 
   Future<void> _verify() async {
     final code = _controller.text.trim();
-    if (code.length != 6 || _loading || _tooManyAttempts) return;
+    if (code.length != 6 || _loading || _tooManyAttempts || _ttlSeconds == 0) {
+      return;
+    }
     setState(() {
       _loading = true;
       _error = null;
@@ -87,17 +99,17 @@ class _OtpScreenState extends State<OtpScreen> {
   }
 
   Future<void> _resend() async {
-    if (_resending || _resendCountdown > 0 || _loading) return;
+    if (_resending || _resendSeconds > 0 || _loading) return;
     setState(() {
       _resending = true;
       _error = null;
       _tooManyAttempts = false;
     });
     try {
-      await context.read<AuthProvider>().requestOtp(widget.phone);
+      final newTtl = await context.read<AuthProvider>().requestOtp(widget.phone);
       if (!mounted) return;
       _controller.clear();
-      _startCountdown();
+      _startTimers(newTtl); // reset both TTL and resend cooldown with fresh values
     } on DioException catch (e) {
       if (!mounted) return;
       setState(() => _error = _mapResendError(_detail(e)));
@@ -120,6 +132,7 @@ class _OtpScreenState extends State<OtpScreen> {
 
   String _mapResendError(String? detail) => switch (detail) {
     'too_many_requests' => 'Слишком много запросов. Подождите минуту.',
+    'sms_not_configured' => 'SMS-сервис временно недоступен.',
     'invalid_phone' => 'Неверный номер телефона.',
     _ => 'Ошибка соединения. Проверьте сеть.',
   };
@@ -127,7 +140,9 @@ class _OtpScreenState extends State<OtpScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final canResend = _resendCountdown == 0 && !_resending && !_loading;
+    final codeExpired = _ttlSeconds == 0;
+    final canResend = _resendSeconds == 0 && !_resending && !_loading;
+    final canVerify = !_loading && !_tooManyAttempts && !codeExpired;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Подтверждение')),
@@ -158,7 +173,7 @@ class _OtpScreenState extends State<OtpScreen> {
                 FilteringTextInputFormatter.digitsOnly,
                 LengthLimitingTextInputFormatter(6),
               ],
-              enabled: !_tooManyAttempts,
+              enabled: canVerify,
               textAlign: TextAlign.center,
               style: const TextStyle(
                 fontSize: 28,
@@ -172,19 +187,31 @@ class _OtpScreenState extends State<OtpScreen> {
                   fontSize: 22,
                   letterSpacing: 8,
                 ),
-                errorText: _error,
+                errorText: _error ?? (codeExpired ? 'Код истёк. Запросите новый.' : null),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
               onChanged: (v) {
                 if (_error != null) setState(() => _error = null);
-                if (v.length == 6) _verify();
+                if (v.length == 6 && canVerify) _verify();
               },
             ),
-            const SizedBox(height: 24),
+            // TTL countdown — only while code is still valid and more than 30s remain
+            if (_ttlSeconds > 30)
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Text(
+                  'Код действителен ещё $_ttlSeconds сек.',
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            const SizedBox(height: 20),
             FilledButton(
-              onPressed: (_loading || _tooManyAttempts) ? null : _verify,
+              onPressed: canVerify ? _verify : null,
               style: FilledButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
@@ -206,6 +233,7 @@ class _OtpScreenState extends State<OtpScreen> {
                     ),
             ),
             const SizedBox(height: 16),
+            // Resend section — separate from code TTL
             Center(
               child: canResend
                   ? TextButton(
@@ -219,9 +247,7 @@ class _OtpScreenState extends State<OtpScreen> {
                           : const Text('Отправить повторно'),
                     )
                   : Text(
-                      _resendCountdown > 0
-                          ? 'Повторная отправка через $_resendCountdown сек.'
-                          : 'Отправить повторно',
+                      'Повторная отправка через $_resendSeconds сек.',
                       textAlign: TextAlign.center,
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
