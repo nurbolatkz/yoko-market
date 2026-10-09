@@ -39,6 +39,10 @@ abstract final class AppTheme {
       useMaterial3: true,
       brightness: Brightness.light,
       colorScheme: colorScheme,
+      // Explicit Roboto prevents serif fallback on Android when the system font
+      // doesn't ship every weight or when Cyrillic glyphs trigger a different
+      // font family. Roboto ships with Android and covers ru/kz/₸ fully.
+      fontFamily: 'Roboto',
       scaffoldBackgroundColor: AppColors.background,
     );
 
@@ -51,6 +55,7 @@ abstract final class AppTheme {
         elevation: 0,
         centerTitle: false,
         titleTextStyle: TextStyle(
+          fontFamily: 'Roboto',
           color: AppColors.navy,
           fontSize: 20,
           fontWeight: FontWeight.w800,
@@ -121,7 +126,7 @@ abstract final class AppTheme {
         ),
       ),
       navigationBarTheme: NavigationBarThemeData(
-        height: 68,
+        height: 74,
         backgroundColor: AppColors.surface,
         surfaceTintColor: Colors.transparent,
         indicatorColor: AppColors.purpleSoft,
@@ -137,13 +142,15 @@ abstract final class AppTheme {
         ),
         labelTextStyle: WidgetStateProperty.resolveWith(
           (states) => TextStyle(
+            fontFamily: 'Roboto',
             color: states.contains(WidgetState.selected)
                 ? AppColors.purple
                 : AppColors.navyMuted,
             fontSize: 11,
+            overflow: TextOverflow.ellipsis,
             fontWeight: states.contains(WidgetState.selected)
                 ? FontWeight.w700
-                : FontWeight.w600,
+                : FontWeight.w500,
           ),
         ),
       ),

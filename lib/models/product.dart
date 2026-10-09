@@ -102,6 +102,8 @@ String? _absoluteUrl(dynamic value) {
     return 'https://yoko-sun.kz/media/${url.substring('/opt/back/media/'.length)}';
   }
   if (url.startsWith('/')) return '${AppConfig.apiOrigin}$url';
+  // Telegram photo_file_id and other non-path strings cannot be used as image URLs.
+  if (!url.contains('/') && !url.contains('.')) return null;
   return '${AppConfig.apiOrigin}/$url';
 }
 
