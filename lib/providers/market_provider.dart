@@ -141,7 +141,10 @@ class MarketProvider with ChangeNotifier {
         offset: _loadedOffset,
       );
       if (_requestVersion != requestVersion) return;
-      _products = [..._products, ...more];
+      // Deduplicate: discard any product_id already present in the current list.
+      final existingIds = {for (final p in _products) p.id};
+      final fresh = more.where((p) => !existingIds.contains(p.id)).toList();
+      _products = [..._products, ...fresh];
       _loadedOffset += more.length;
       _hasMore = more.length == _pageSize;
     } catch (_) {

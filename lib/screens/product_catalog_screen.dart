@@ -39,6 +39,12 @@ class _ProductCatalogScreenState extends State<ProductCatalogScreen> {
     }
   }
 
+  void _scrollToTop() {
+    if (_scrollController.hasClients) {
+      _scrollController.jumpTo(0);
+    }
+  }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -87,19 +93,27 @@ class _ProductCatalogScreenState extends State<ProductCatalogScreen> {
                   _searchDebounce?.cancel();
                   _searchDebounce = Timer(
                     const Duration(milliseconds: 350),
-                    provider.loadProducts,
+                    () {
+                      _scrollToTop();
+                      provider.loadProducts();
+                    },
                   );
                 },
                 decoration: InputDecoration(
                   hintText: 'Поиск товаров...',
                   prefixIcon: const Icon(Icons.search_rounded),
                   suffixIcon: provider.searchQuery.isEmpty
-                      ? const Icon(Icons.tune_rounded)
+                      ? IconButton(
+                          tooltip: 'Фильтры',
+                          icon: const Icon(Icons.tune_rounded),
+                          onPressed: () => _showFilterSheet(context, provider),
+                        )
                       : IconButton(
                           tooltip: 'Очистить поиск',
                           onPressed: () {
                             _searchController.clear();
                             provider.setSearchQuery('');
+                            _scrollToTop();
                             provider.loadProducts();
                           },
                           icon: const Icon(Icons.close_rounded),
@@ -127,6 +141,7 @@ class _ProductCatalogScreenState extends State<ProductCatalogScreen> {
                     selected: selected,
                     onSelected: (_) {
                       provider.setSelectedCategory(category);
+                      _scrollToTop();
                       provider.loadProducts();
                     },
                     selectedColor: AppColors.purple,
@@ -143,17 +158,22 @@ class _ProductCatalogScreenState extends State<ProductCatalogScreen> {
                 },
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 2, 16, 12),
-              child: Text(
-                '${products.length} ${_productWord(products.length)}',
-                key: const Key('catalog-product-count'),
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: AppColors.navyMuted,
-                  fontWeight: FontWeight.w600,
+            // Count label: only show when we have all results (hasMore = false)
+            // to avoid showing a partial loaded count as the total.
+            if (!provider.hasMore && products.isNotEmpty && !provider.catalogLoading)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 2, 16, 10),
+                child: Text(
+                  '${products.length} ${_productWord(products.length)}',
+                  key: const Key('catalog-product-count'),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: AppColors.navyMuted,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
-              ),
-            ),
+              )
+            else
+              const SizedBox(height: 10),
             Expanded(
               child: provider.catalogLoading && products.isEmpty
                   ? const Center(child: CircularProgressIndicator())
@@ -166,6 +186,7 @@ class _ProductCatalogScreenState extends State<ProductCatalogScreen> {
                   ? _EmptyCatalog(
                       onReset: () {
                         _searchController.clear();
+                        _scrollToTop();
                         provider.resetCatalogFilters();
                       },
                     )
@@ -185,9 +206,9 @@ class _ProductCatalogScreenState extends State<ProductCatalogScreen> {
                                   gridDelegate:
                                       const SliverGridDelegateWithFixedCrossAxisCount(
                                         crossAxisCount: 2,
-                                        mainAxisExtent: 310,
-                                        crossAxisSpacing: 12,
-                                        mainAxisSpacing: 12,
+                                        mainAxisExtent: 272,
+                                        crossAxisSpacing: 10,
+                                        mainAxisSpacing: 10,
                                       ),
                                   delegate: SliverChildBuilderDelegate(
                                     (context, index) => CatalogProductCard(
@@ -225,7 +246,7 @@ class _ProductCatalogScreenState extends State<ProductCatalogScreen> {
                                   ),
                                 ),
                               const SliverToBoxAdapter(
-                                child: SizedBox(height: 96),
+                                child: SizedBox(height: 80),
                               ),
                             ],
                           ),
@@ -237,6 +258,46 @@ class _ProductCatalogScreenState extends State<ProductCatalogScreen> {
                           ),
                       ],
                     ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showFilterSheet(BuildContext context, MarketProvider provider) {
+    showModalBottomSheet<void>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.border,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Сортировка и фильтры',
+              style: Theme.of(ctx).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 12),
+            const Text('Сортировка по популярности применяется по умолчанию.'),
+            const SizedBox(height: 16),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Понятно'),
             ),
           ],
         ),
@@ -287,21 +348,22 @@ class CatalogProductCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // ── Product image (slightly shorter) ────────────────────
               SizedBox(
-                height: 130,
+                height: 120,
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
                     ClipRRect(
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(12),
                       child: ProductImage(
                         key: Key('catalog-product-image-${product.id}'),
                         imageUrl: product.imageUrl,
                       ),
                     ),
                     Positioned(
-                      top: 6,
-                      right: 6,
+                      top: 4,
+                      right: 4,
                       child: Material(
                         color: Colors.white.withValues(alpha: .92),
                         shape: const CircleBorder(),
@@ -318,7 +380,7 @@ class CatalogProductCard extends StatelessWidget {
                             color: isFavorite
                                 ? AppColors.purple
                                 : AppColors.navy,
-                            size: 21,
+                            size: 20,
                           ),
                         ),
                       ),
@@ -326,47 +388,49 @@ class CatalogProductCard extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(height: 9),
+              const SizedBox(height: 8),
+              // ── Name (up to 3 lines) ─────────────────────────────────
               Text(
                 product.title,
-                maxLines: 2,
+                maxLines: 3,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   color: AppColors.navy,
-                  fontSize: 14,
-                  height: 1.22,
+                  fontSize: 13,
+                  height: 1.25,
                   fontWeight: FontWeight.w700,
                 ),
               ),
-              const SizedBox(height: 4),
-              if (product.packageInfo.isNotEmpty)
+              // ── Package / size info ──────────────────────────────────
+              if (product.packageInfo.isNotEmpty) ...[
+                const SizedBox(height: 2),
                 Text(
                   product.packageInfo,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: AppColors.navyMuted,
-                    fontSize: 12,
+                    fontSize: 11,
                     height: 1.2,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
-              const SizedBox(height: 5),
+              ],
+              const SizedBox(height: 4),
+              // ── Stock status (no quantity number) ────────────────────
               Text(
-                product.inStock
-                    ? 'В наличии: ${product.stockQuantity}'
-                    : 'Нет в наличии',
+                product.inStock ? 'В наличии' : 'Нет в наличии',
                 maxLines: 1,
-                overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   color: product.inStock
                       ? const Color(0xFF23804A)
                       : Colors.red.shade700,
                   fontSize: 11,
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
               const Spacer(),
+              // ── Price + add button ───────────────────────────────────
               Row(
                 children: [
                   Expanded(
@@ -376,26 +440,28 @@ class CatalogProductCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         color: AppColors.navy,
-                        fontSize: 16,
+                        fontSize: 15,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
                   ),
                   IconButton.filled(
                     key: Key('add-${product.id}'),
-                    tooltip: 'Добавить в корзину',
+                    tooltip: product.inStock ? 'Добавить в корзину' : 'Нет в наличии',
                     onPressed: product.inStock ? onAdd : null,
                     style: IconButton.styleFrom(
                       backgroundColor: AppColors.purple,
                       foregroundColor: Colors.white,
-                      minimumSize: const Size(36, 36),
-                      maximumSize: const Size(36, 36),
+                      disabledBackgroundColor: AppColors.border,
+                      disabledForegroundColor: AppColors.navyMuted,
+                      minimumSize: const Size(34, 34),
+                      maximumSize: const Size(34, 34),
                       padding: EdgeInsets.zero,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(9),
                       ),
                     ),
-                    icon: const Icon(Icons.add_rounded, size: 22),
+                    icon: const Icon(Icons.add_rounded, size: 20),
                   ),
                 ],
               ),

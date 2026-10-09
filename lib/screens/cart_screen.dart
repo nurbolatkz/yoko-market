@@ -30,7 +30,9 @@ class CartScreen extends StatelessWidget {
             ),
         ],
       ),
-      body: items.isEmpty ? _EmptyCart(onGoToCatalog: onGoToCatalog) : _CartList(items: items, provider: provider),
+      body: items.isEmpty
+          ? _EmptyCart(onGoToCatalog: onGoToCatalog)
+          : _CartList(items: items, provider: provider),
     );
   }
 
@@ -112,16 +114,17 @@ class _CartList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final total = provider.cartTotalAmount;
 
     return Column(
       children: [
         Expanded(
           child: ListView.builder(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            // Bottom padding ensures the last item scrolls fully above the
+            // summary bar without a huge gap: use a fixed 12dp breathing room.
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
             itemCount: items.length,
-            itemBuilder: (context, index) => _CartItemRow(
+            itemBuilder: (context, index) => _CartItemCard(
               item: items[index],
               provider: provider,
             ),
@@ -133,8 +136,8 @@ class _CartList extends StatelessWidget {
   }
 }
 
-class _CartItemRow extends StatelessWidget {
-  const _CartItemRow({required this.item, required this.provider});
+class _CartItemCard extends StatelessWidget {
+  const _CartItemCard({required this.item, required this.provider});
 
   final CartItem item;
   final MarketProvider provider;
@@ -146,38 +149,64 @@ class _CartItemRow extends StatelessWidget {
 
     return Container(
       key: Key('cart-item-${item.product.id}'),
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
-        ),
+        border: Border.all(color: AppColors.border),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // ── Image ─────────────────────────────────────────────────────
           ClipRRect(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(10),
             child: SizedBox(
-              width: 80,
-              height: 80,
+              width: 76,
+              height: 76,
               child: ProductImage(imageUrl: item.product.imageUrl),
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
+          // ── Content ───────────────────────────────────────────────────
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  item.product.title,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
+                // Title row + delete button
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        item.product.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          height: 1.3,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    SizedBox(
+                      width: 28,
+                      height: 28,
+                      child: IconButton(
+                        key: Key('cart-del-${item.product.id}'),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                        visualDensity: VisualDensity.compact,
+                        tooltip: 'Удалить',
+                        icon: const Icon(Icons.close_rounded, size: 16),
+                        color: AppColors.navyMuted,
+                        onPressed: () => provider.removeFromCart(item.product.id),
+                      ),
+                    ),
+                  ],
                 ),
+                // Package info
                 if (item.product.packageInfo.isNotEmpty) ...[
                   const SizedBox(height: 2),
                   Text(
@@ -189,15 +218,16 @@ class _CartItemRow extends StatelessWidget {
                     ),
                   ),
                 ],
-                const SizedBox(height: 6),
+                // Unit price
+                const SizedBox(height: 4),
                 Text(
                   '${item.product.price.toStringAsFixed(0)} ₸',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.primary,
-                    fontWeight: FontWeight.w700,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: AppColors.navyMuted,
                   ),
                 ),
                 const SizedBox(height: 8),
+                // Qty selector + line total
                 Row(
                   children: [
                     _QtySelector(
@@ -218,16 +248,9 @@ class _CartItemRow extends StatelessWidget {
                     Text(
                       '${item.totalPrice.toStringAsFixed(0)} ₸',
                       style: theme.textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w900,
+                        fontWeight: FontWeight.w800,
                         color: AppColors.navy,
                       ),
-                    ),
-                    const SizedBox(width: 4),
-                    IconButton(
-                      visualDensity: VisualDensity.compact,
-                      icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
-                      tooltip: 'Удалить',
-                      onPressed: () => provider.removeFromCart(item.product.id),
                     ),
                   ],
                 ),
@@ -265,10 +288,7 @@ class _QtySelector extends StatelessWidget {
         children: [
           IconButton(
             key: Key('cart-dec-${item.product.id}'),
-            icon: Icon(
-              item.quantity == 1 ? Icons.delete_outline_rounded : Icons.remove_rounded,
-              size: 16,
-            ),
+            icon: const Icon(Icons.remove_rounded, size: 16),
             constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
             padding: EdgeInsets.zero,
             onPressed: onDecrement,
@@ -322,15 +342,15 @@ class _SummaryBar extends StatelessWidget {
     final theme = Theme.of(context);
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+      padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, -5),
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 12,
+            offset: const Offset(0, -4),
           ),
         ],
       ),
@@ -338,36 +358,39 @@ class _SummaryBar extends StatelessWidget {
         top: false,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Итого',
-                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                  'Товары',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: AppColors.navyMuted,
+                  ),
                 ),
                 Text(
                   '${total.toStringAsFixed(0)} ₸',
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: theme.colorScheme.primary,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.navy,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             FilledButton(
               key: const Key('cart-checkout-btn'),
               onPressed: () => _onCheckout(context),
               style: FilledButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
+                padding: const EdgeInsets.symmetric(vertical: 15),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
               child: const Text('Оформить заказ', style: TextStyle(fontSize: 16)),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 6),
           ],
         ),
       ),
