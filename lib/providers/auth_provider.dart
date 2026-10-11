@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../models/user_profile.dart';
 import '../services/auth_service.dart';
 
-enum AuthState { unknown, guest, authenticated }
+enum AuthState { unknown, guest, authenticated, sessionError }
 
 class AuthProvider with ChangeNotifier {
   AuthProvider({AuthService? authService})
@@ -18,7 +18,17 @@ class AuthProvider with ChangeNotifier {
   UserProfile? _user;
   UserProfile? get user => _user;
 
-  Future<void> init() async {
+  // Called once from main.dart via AuthProvider()..init().
+  Future<void> init() => _tryRestoreSession();
+
+  // Called from the "Повторить" button in ProfileScreen.
+  Future<void> retryInit() async {
+    _state = AuthState.unknown;
+    notifyListeners();
+    await _tryRestoreSession();
+  }
+
+  Future<void> _tryRestoreSession() async {
     try {
       final hasSession = await _auth.hasSession();
       if (!hasSession) {
@@ -28,14 +38,17 @@ class AuthProvider with ChangeNotifier {
       }
       final newToken = await _auth.tryRefresh();
       if (newToken == null) {
-        _state = AuthState.guest;
+        // _doRefresh clears tokens on 401; on network error tokens are preserved.
+        // Check which case this is so we can offer a retry instead of dropping to guest.
+        final stillHasSession = await _auth.hasSession();
+        _state = stillHasSession ? AuthState.sessionError : AuthState.guest;
         notifyListeners();
         return;
       }
       _user = await _auth.getProfile();
       _state = _user != null ? AuthState.authenticated : AuthState.guest;
     } catch (_) {
-      // SecureStorage unavailable (test env) — treat as guest
+      // SecureStorage unavailable (test env) — treat as guest.
       _state = AuthState.guest;
     }
     notifyListeners();
