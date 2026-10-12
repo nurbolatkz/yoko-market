@@ -440,6 +440,8 @@ class _ProductGrid extends StatelessWidget {
         ),
         itemBuilder: (context, index) {
           final product = products[index];
+          final cartQty = provider.cartQuantityFor(product.id);
+          final canAdd = product.inStock && cartQty < product.stockQuantity;
 
           return InkWell(
             borderRadius: AppRadii.cardBorder,
@@ -471,7 +473,7 @@ class _ProductGrid extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 8),
                   Text(
                     product.title,
                     maxLines: 2,
@@ -481,7 +483,19 @@ class _ProductGrid extends StatelessWidget {
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 3),
+                  Text(
+                    product.inStock ? 'В наличии' : 'Нет в наличии',
+                    maxLines: 1,
+                    style: TextStyle(
+                      color: product.inStock
+                          ? const Color(0xFF23804A)
+                          : Colors.red.shade700,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 5),
                   Row(
                     children: [
                       Expanded(
@@ -495,17 +509,20 @@ class _ProductGrid extends StatelessWidget {
                           ),
                         ),
                       ),
-                      InkWell(
-                        borderRadius: BorderRadius.circular(10),
-                        onTap: () => provider.addToCart(product),
-                        child: Container(
-                          width: 34,
-                          height: 34,
-                          decoration: BoxDecoration(
-                            color: AppColors.purple,
-                            borderRadius: BorderRadius.circular(10),
+                      Container(
+                        width: 34,
+                        height: 34,
+                        decoration: BoxDecoration(
+                          color: canAdd ? AppColors.purple : AppColors.border,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(10),
+                          onTap: canAdd ? () => provider.addToCart(product) : null,
+                          child: Icon(
+                            Icons.add,
+                            color: canAdd ? Colors.white : AppColors.navyMuted,
                           ),
-                          child: const Icon(Icons.add, color: Colors.white),
                         ),
                       ),
                     ],

@@ -211,25 +211,23 @@ class _ProductCatalogScreenState extends State<ProductCatalogScreen> {
                                         mainAxisSpacing: 10,
                                       ),
                                   delegate: SliverChildBuilderDelegate(
-                                    (context, index) => CatalogProductCard(
-                                      product: products[index],
-                                      isFavorite: provider.isFavorite(
-                                        products[index].id,
-                                      ),
-                                      onFavorite: () => provider.toggleFavorite(
-                                        products[index].id,
-                                      ),
-                                      onAdd: () =>
-                                          provider.addToCart(products[index]),
-                                      onOpen: () => Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (_) => ProductDetailScreen(
-                                            product: products[index],
+                                    (context, index) {
+                                      final p = products[index];
+                                      final cartQty = provider.cartQuantityFor(p.id);
+                                      final canAdd = p.inStock && cartQty < p.stockQuantity;
+                                      return CatalogProductCard(
+                                        product: p,
+                                        isFavorite: provider.isFavorite(p.id),
+                                        onFavorite: () => provider.toggleFavorite(p.id),
+                                        onAdd: canAdd ? () => provider.addToCart(p) : null,
+                                        onOpen: () => Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) => ProductDetailScreen(product: p),
                                           ),
                                         ),
-                                      ),
-                                    ),
+                                      );
+                                    },
                                     childCount: products.length,
                                   ),
                                 ),
@@ -329,7 +327,7 @@ class CatalogProductCard extends StatelessWidget {
   final Product product;
   final bool isFavorite;
   final VoidCallback onFavorite;
-  final VoidCallback onAdd;
+  final VoidCallback? onAdd;
   final VoidCallback onOpen;
 
   @override
@@ -448,7 +446,7 @@ class CatalogProductCard extends StatelessWidget {
                   IconButton.filled(
                     key: Key('add-${product.id}'),
                     tooltip: product.inStock ? 'Добавить в корзину' : 'Нет в наличии',
-                    onPressed: product.inStock ? onAdd : null,
+                    onPressed: onAdd,
                     style: IconButton.styleFrom(
                       backgroundColor: AppColors.purple,
                       foregroundColor: Colors.white,
