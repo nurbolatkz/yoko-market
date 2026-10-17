@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "kz.yokosun.yokomarket"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 37
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
