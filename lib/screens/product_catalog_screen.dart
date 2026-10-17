@@ -387,10 +387,10 @@ class CatalogProductCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 8),
-              // ── Name (up to 3 lines) ─────────────────────────────────
+              // ── Name (up to 2 lines) ─────────────────────────────────
               Text(
                 product.title,
-                maxLines: 3,
+                maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   color: AppColors.navy,
@@ -417,12 +417,18 @@ class CatalogProductCard extends StatelessWidget {
               const SizedBox(height: 4),
               // ── Stock status (no quantity number) ────────────────────
               Text(
-                product.inStock ? 'В наличии' : 'Нет в наличии',
+                !product.inStock
+                    ? 'Нет в наличии'
+                    : onAdd == null
+                        ? 'Максимум в корзине'
+                        : 'В наличии',
                 maxLines: 1,
                 style: TextStyle(
-                  color: product.inStock
-                      ? const Color(0xFF23804A)
-                      : Colors.red.shade700,
+                  color: !product.inStock
+                      ? Colors.red.shade700
+                      : onAdd == null
+                          ? AppColors.navyMuted
+                          : const Color(0xFF23804A),
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
                 ),

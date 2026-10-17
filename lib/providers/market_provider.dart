@@ -58,6 +58,21 @@ class MarketProvider with ChangeNotifier {
 
   List<Product> get filteredProducts => _products;
 
+  List<Product> _featuredProducts = const [];
+  bool _featuredLoading = false;
+  List<Product> get featuredProducts => List.unmodifiable(_featuredProducts);
+  bool get featuredLoading => _featuredLoading;
+
+  Future<void> loadFeatured() async {
+    _featuredLoading = true;
+    notifyListeners();
+    try {
+      _featuredProducts = await _catalogDataSource.getProducts(limit: 4);
+    } catch (_) {}
+    _featuredLoading = false;
+    notifyListeners();
+  }
+
   Future<void> loadCatalog() async {
     final requestVersion = ++_requestVersion;
     _catalogLoading = true;
@@ -231,6 +246,27 @@ class MarketProvider with ChangeNotifier {
     _saveCart();
   }
 
+  // Subtracts exactly the ordered quantities from the cart.
+  // Items added to the cart during the request are preserved with the
+  // remaining quantity (currentQty - orderedQty), keeping anything > 0.
+  void clearOrderedItems(List<MapEntry<String, int>> snapshot) {
+    var changed = false;
+    for (final entry in snapshot) {
+      final item = _cartItems[entry.key];
+      if (item == null) continue;
+      if (item.quantity <= entry.value) {
+        _cartItems.remove(entry.key);
+      } else {
+        item.quantity -= entry.value;
+      }
+      changed = true;
+    }
+    if (changed) {
+      notifyListeners();
+      _saveCart();
+    }
+  }
+
   Future<void> _loadCart() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -259,7 +295,7 @@ class MarketProvider with ChangeNotifier {
           _cartKey,
           jsonEncode(_cartItems.values.map((i) => i.toJson()).toList()),
         ))
-        .catchError((_) {});
+        .catchError((_) => false);
   }
 
   // ── Favourites ────────────────────────────────────────────────────────────

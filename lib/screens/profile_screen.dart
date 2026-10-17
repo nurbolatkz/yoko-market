@@ -3,8 +3,10 @@ import 'package:provider/provider.dart';
 
 import '../providers/auth_provider.dart';
 import '../providers/market_provider.dart';
+import '../providers/orders_provider.dart';
 import '../theme/app_theme.dart';
 import 'auth/phone_screen.dart';
+import 'orders_screen.dart';
 import 'product_detail_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -15,9 +17,7 @@ class ProfileScreen extends StatelessWidget {
     final auth = context.watch<AuthProvider>();
 
     if (auth.state == AuthState.unknown) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(backgroundColor: AppColors.background);
     }
 
     if (auth.state == AuthState.sessionError) {
@@ -310,6 +310,32 @@ class _AuthenticatedView extends StatelessWidget {
               ],
             ),
           ),
+          const SizedBox(height: 16),
+          Text(
+            'Заказы',
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Card(
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: BorderSide(
+                color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+              ),
+            ),
+            child: ListTile(
+              leading: const Icon(Icons.receipt_long_outlined),
+              title: const Text('Мои заказы'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const OrdersScreen()),
+              ),
+            ),
+          ),
           if (wishlist.isNotEmpty) ...[
             const SizedBox(height: 24),
             Text(
@@ -402,6 +428,7 @@ class _AuthenticatedView extends StatelessWidget {
           ),
           FilledButton(
             onPressed: () {
+              ctx.read<OrdersProvider>().clearOrders();
               auth.logout();
               Navigator.pop(ctx);
             },

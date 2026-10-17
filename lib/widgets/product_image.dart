@@ -28,18 +28,7 @@ class ProductImage extends StatelessWidget {
                 fit: BoxFit.contain,
                 loadingBuilder: (context, child, loadingProgress) {
                   if (loadingProgress == null) return child;
-
-                  final totalBytes = loadingProgress.expectedTotalBytes;
-                  final progress = totalBytes == null
-                      ? null
-                      : loadingProgress.cumulativeBytesLoaded / totalBytes;
-                  return Center(
-                    child: CircularProgressIndicator(
-                      value: progress,
-                      strokeWidth: 2.5,
-                      color: AppColors.purple,
-                    ),
-                  );
+                  return const ProductImagePlaceholder();
                 },
                 errorBuilder: (_, _, _) => const ProductImagePlaceholder(),
               ),

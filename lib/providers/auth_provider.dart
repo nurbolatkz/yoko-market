@@ -54,6 +54,21 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  Future<String?> getAccessToken() => _auth.getAccessToken();
+
+  // Calls the single-flight refresh and updates auth state on failure.
+  // Use when an API call returns 401 to attempt silent re-auth before giving up.
+  Future<String?> ensureFreshToken() async {
+    final newToken = await _auth.tryRefresh();
+    if (newToken == null) {
+      final stillHasSession = await _auth.hasSession();
+      if (!stillHasSession) _user = null;
+      _state = stillHasSession ? AuthState.sessionError : AuthState.guest;
+      notifyListeners();
+    }
+    return newToken;
+  }
+
   Future<int> requestOtp(String phone) => _auth.requestOtp(phone);
 
   Future<void> login(String phone, String code) async {
