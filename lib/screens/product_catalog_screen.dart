@@ -211,25 +211,23 @@ class _ProductCatalogScreenState extends State<ProductCatalogScreen> {
                                         mainAxisSpacing: 10,
                                       ),
                                   delegate: SliverChildBuilderDelegate(
-                                    (context, index) => CatalogProductCard(
-                                      product: products[index],
-                                      isFavorite: provider.isFavorite(
-                                        products[index].id,
-                                      ),
-                                      onFavorite: () => provider.toggleFavorite(
-                                        products[index].id,
-                                      ),
-                                      onAdd: () =>
-                                          provider.addToCart(products[index]),
-                                      onOpen: () => Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (_) => ProductDetailScreen(
-                                            product: products[index],
+                                    (context, index) {
+                                      final p = products[index];
+                                      final cartQty = provider.cartQuantityFor(p.id);
+                                      final canAdd = p.inStock && cartQty < p.stockQuantity;
+                                      return CatalogProductCard(
+                                        product: p,
+                                        isFavorite: provider.isFavorite(p.id),
+                                        onFavorite: () => provider.toggleFavorite(p.id),
+                                        onAdd: canAdd ? () => provider.addToCart(p) : null,
+                                        onOpen: () => Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) => ProductDetailScreen(product: p),
                                           ),
                                         ),
-                                      ),
-                                    ),
+                                      );
+                                    },
                                     childCount: products.length,
                                   ),
                                 ),
@@ -329,7 +327,7 @@ class CatalogProductCard extends StatelessWidget {
   final Product product;
   final bool isFavorite;
   final VoidCallback onFavorite;
-  final VoidCallback onAdd;
+  final VoidCallback? onAdd;
   final VoidCallback onOpen;
 
   @override
@@ -389,10 +387,10 @@ class CatalogProductCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 8),
-              // ── Name (up to 3 lines) ─────────────────────────────────
+              // ── Name (up to 2 lines) ─────────────────────────────────
               Text(
                 product.title,
-                maxLines: 3,
+                maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   color: AppColors.navy,
@@ -419,12 +417,18 @@ class CatalogProductCard extends StatelessWidget {
               const SizedBox(height: 4),
               // ── Stock status (no quantity number) ────────────────────
               Text(
-                product.inStock ? 'В наличии' : 'Нет в наличии',
+                !product.inStock
+                    ? 'Нет в наличии'
+                    : onAdd == null
+                        ? 'Максимум в корзине'
+                        : 'В наличии',
                 maxLines: 1,
                 style: TextStyle(
-                  color: product.inStock
-                      ? const Color(0xFF23804A)
-                      : Colors.red.shade700,
+                  color: !product.inStock
+                      ? Colors.red.shade700
+                      : onAdd == null
+                          ? AppColors.navyMuted
+                          : const Color(0xFF23804A),
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
                 ),
@@ -448,7 +452,7 @@ class CatalogProductCard extends StatelessWidget {
                   IconButton.filled(
                     key: Key('add-${product.id}'),
                     tooltip: product.inStock ? 'Добавить в корзину' : 'Нет в наличии',
-                    onPressed: product.inStock ? onAdd : null,
+                    onPressed: onAdd,
                     style: IconButton.styleFrom(
                       backgroundColor: AppColors.purple,
                       foregroundColor: Colors.white,

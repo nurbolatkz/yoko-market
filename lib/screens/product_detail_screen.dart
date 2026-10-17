@@ -20,19 +20,13 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
   Product get _product => widget.product;
 
-  void _increment() {
-    if (_qty < _product.stockQuantity) setState(() => _qty++);
-  }
-
-  void _decrement() {
-    if (_qty > 1) setState(() => _qty--);
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final provider = context.watch<MarketProvider>();
     final isFav = provider.isFavorite(_product.id);
+    final cartQty = provider.cartQuantityFor(_product.id);
+    final availableToAdd = (_product.stockQuantity - cartQty).clamp(0, _product.stockQuantity);
 
     return Scaffold(
       body: CustomScrollView(
@@ -149,11 +143,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       ),
       bottomSheet: _BottomBar(
         qty: _qty,
-        onIncrement: _product.inStock && _qty < _product.stockQuantity
-            ? _increment
+        onIncrement: _product.inStock && availableToAdd > 0 && _qty < availableToAdd
+            ? () => setState(() => _qty++)
             : null,
-        onDecrement: _qty > 1 ? _decrement : null,
-        onAddToCart: _product.inStock
+        onDecrement: _qty > 1 ? () => setState(() => _qty--) : null,
+        onAddToCart: _product.inStock && availableToAdd > 0 && _qty <= availableToAdd
             ? () {
                 provider.addToCartWithQty(_product, _qty);
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -164,6 +158,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 );
               }
             : null,
+        // atMax: product is in stock but addition is blocked (no remaining stock
+        // OR selected qty exceeds what's still available after cart contents).
+        atMax: _product.inStock && (availableToAdd == 0 || _qty > availableToAdd),
       ),
     );
   }
@@ -175,12 +172,14 @@ class _BottomBar extends StatelessWidget {
     required this.onIncrement,
     required this.onDecrement,
     required this.onAddToCart,
+    required this.atMax,
   });
 
   final int qty;
   final VoidCallback? onIncrement;
   final VoidCallback? onDecrement;
   final VoidCallback? onAddToCart;
+  final bool atMax;
 
   @override
   Widget build(BuildContext context) {
@@ -243,7 +242,7 @@ class _BottomBar extends StatelessWidget {
                 key: const Key('detail-add-to-cart'),
                 onPressed: onAddToCart,
                 icon: const Icon(Icons.shopping_cart_outlined),
-                label: const Text('В корзину'),
+                label: Text(atMax ? 'Максимум в корзине' : 'В корзину'),
                 style: FilledButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(

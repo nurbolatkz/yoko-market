@@ -16,31 +16,32 @@ class CatalogScreen extends StatelessWidget {
     final provider = context.watch<MarketProvider>();
 
     return Scaffold(
+      backgroundColor: AppColors.background,
       body: SafeArea(
         bottom: false,
         child: CustomScrollView(
           key: const Key('home-scroll'),
           slivers: [
             SliverPadding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
               sliver: SliverList.list(
                 children: [
                   const _Header(),
                   const SizedBox(height: 14),
                   _SearchField(provider: provider),
-                  const SizedBox(height: 16),
-                  const _HeroBanner(),
                   const SizedBox(height: 18),
+                  _HeroBanner(onShopTap: onCategorySelected),
+                  const SizedBox(height: 22),
                   _Categories(onSelected: onCategorySelected),
-                  const SizedBox(height: 26),
+                  const SizedBox(height: 28),
                   const _SectionHeader(title: 'Популярные бренды'),
                   const SizedBox(height: 12),
                   const _Brands(),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 24),
                   const _PromotionBanner(),
-                  const SizedBox(height: 26),
+                  const SizedBox(height: 28),
                   const _SectionHeader(title: 'Популярные товары'),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 14),
                 ],
               ),
             ),
@@ -53,54 +54,66 @@ class CatalogScreen extends StatelessWidget {
   }
 }
 
+// ── Header ────────────────────────────────────────────────────────────────
+
 class _Header extends StatelessWidget {
   const _Header();
 
   @override
   Widget build(BuildContext context) {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         RichText(
           text: const TextSpan(
             style: TextStyle(
-              color: AppColors.navy,
-              fontSize: 24,
-              fontWeight: FontWeight.w900,
-              letterSpacing: -0.8,
+              fontFamily: 'Roboto',
+              letterSpacing: -0.5,
             ),
             children: [
               TextSpan(
                 text: 'Y',
-                style: TextStyle(color: AppColors.purple, fontSize: 34),
+                style: TextStyle(
+                  color: AppColors.purple,
+                  fontSize: 34,
+                  fontWeight: FontWeight.w900,
+                ),
               ),
               TextSpan(
                 text: 'o',
-                style: TextStyle(color: AppColors.yellow, fontSize: 34),
+                style: TextStyle(
+                  color: AppColors.yellow,
+                  fontSize: 34,
+                  fontWeight: FontWeight.w900,
+                ),
               ),
-              TextSpan(text: ' Market'),
+              TextSpan(
+                text: ' Market',
+                style: TextStyle(
+                  color: AppColors.navy,
+                  fontSize: 24,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
             ],
           ),
         ),
         const Spacer(),
-        Stack(
-          clipBehavior: Clip.none,
-          children: [
-            IconButton(
-              tooltip: 'Уведомления',
-              onPressed: () {},
-              icon: const Icon(Icons.notifications_none_rounded, size: 28),
-            ),
-            const Positioned(
-              right: 8,
-              top: 7,
-              child: CircleAvatar(radius: 4, backgroundColor: AppColors.purple),
-            ),
-          ],
+        IconButton(
+          tooltip: 'Уведомления',
+          onPressed: () {},
+          icon: const Icon(
+            Icons.notifications_none_rounded,
+            size: 26,
+            color: AppColors.navy,
+          ),
         ),
       ],
     );
   }
 }
+
+// ── Search ────────────────────────────────────────────────────────────────
 
 class _SearchField extends StatelessWidget {
   const _SearchField({required this.provider});
@@ -111,23 +124,47 @@ class _SearchField extends StatelessWidget {
   Widget build(BuildContext context) {
     return TextField(
       onChanged: provider.setSearchQuery,
-      decoration: const InputDecoration(
+      style: const TextStyle(color: AppColors.navy, fontSize: 15),
+      decoration: InputDecoration(
         hintText: 'Поиск товаров...',
-        prefixIcon: Icon(Icons.search_rounded, size: 28),
-        suffixIcon: Icon(Icons.tune_rounded, size: 23),
+        hintStyle: const TextStyle(color: AppColors.navyMuted),
+        prefixIcon: const Icon(
+          Icons.search_rounded,
+          size: 22,
+          color: AppColors.navyMuted,
+        ),
+        filled: true,
+        fillColor: Colors.white,
+        contentPadding: const EdgeInsets.symmetric(vertical: 13),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: AppColors.border),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: AppColors.border),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: AppColors.purple, width: 1.5),
+        ),
       ),
     );
   }
 }
 
+// ── Hero banner ───────────────────────────────────────────────────────────
+
 class _HeroBanner extends StatelessWidget {
-  const _HeroBanner();
+  const _HeroBanner({required this.onShopTap});
+
+  final ValueChanged<String> onShopTap;
 
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final height = (constraints.maxWidth / 2.65).clamp(140.0, 170.0);
+        final height = (constraints.maxWidth / 2.5).clamp(140.0, 178.0);
 
         return ClipRRect(
           borderRadius: AppRadii.cardBorder,
@@ -136,56 +173,76 @@ class _HeroBanner extends StatelessWidget {
             child: Stack(
               fit: StackFit.expand,
               children: [
+                // photo
                 Image.asset(
                   'assets/images/hero_banner.png',
                   fit: BoxFit.cover,
                   alignment: Alignment.centerRight,
                 ),
+                // left overlay so text stays readable on any photo
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.white.withAlpha(220),
+                        Colors.white.withAlpha(0),
+                      ],
+                      stops: const [0.45, 1.0],
+                    ),
+                  ),
+                ),
+                // text + button
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(18, 15, 12, 14),
+                  padding: const EdgeInsets.fromLTRB(18, 16, 12, 16),
                   child: Align(
                     alignment: Alignment.centerLeft,
                     child: ConstrainedBox(
                       constraints: BoxConstraints(
-                        maxWidth: constraints.maxWidth * .48,
+                        maxWidth: constraints.maxWidth * .50,
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Text(
                             'YokoSun',
-                            maxLines: 1,
                             style: TextStyle(
-                              color: AppColors.navy,
-                              fontSize: 25,
-                              fontWeight: FontWeight.w900,
-                              height: 1,
+                              color: AppColors.purple,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.2,
                             ),
                           ),
-                          const SizedBox(height: 7),
+                          const SizedBox(height: 4),
                           const Text(
-                            'Забота\nс первых дней',
+                            'Всё для\nмалыша',
                             maxLines: 2,
                             style: TextStyle(
                               color: AppColors.navy,
-                              fontSize: 15,
-                              height: 1.12,
-                              fontWeight: FontWeight.w700,
+                              fontSize: 20,
+                              fontWeight: FontWeight.w900,
+                              height: 1.1,
+                              letterSpacing: -0.3,
                             ),
                           ),
                           const Spacer(),
                           SizedBox(
                             height: 38,
                             child: FilledButton(
-                              onPressed: () {},
+                              onPressed: () => onShopTap(''),
                               style: FilledButton.styleFrom(
-                                minimumSize: const Size(110, 38),
+                                backgroundColor: AppColors.yellow,
+                                foregroundColor: AppColors.navy,
+                                minimumSize: const Size(100, 38),
                                 padding: const EdgeInsets.symmetric(
-                                  horizontal: 15,
+                                  horizontal: 16,
+                                ),
+                                textStyle: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
                                 ),
                                 shape: const StadiumBorder(),
                               ),
-                              child: const Text('Купить  →'),
+                              child: const Text('В каталог  →'),
                             ),
                           ),
                         ],
@@ -202,24 +259,26 @@ class _HeroBanner extends StatelessWidget {
   }
 }
 
+// ── Categories ────────────────────────────────────────────────────────────
+
 class _Categories extends StatelessWidget {
   const _Categories({required this.onSelected});
 
   final ValueChanged<String> onSelected;
 
-  static const items = [
-    ('Подгузники', Icons.baby_changing_station_rounded, Color(0xFFDDEEFF)),
-    ('Детская\nкосметика', Icons.spa_outlined, Color(0xFFFFE5EC)),
-    ('Бытовая\nхимия', Icons.cleaning_services_outlined, Color(0xFFE6F3D9)),
-    ('Салфетки', Icons.layers_outlined, Color(0xFFDDEEFF)),
-    ('Другое', Icons.toys_outlined, Color(0xFFF0E7FF)),
+  static const _items = [
+    ('Подгузники', Icons.baby_changing_station_rounded),
+    ('Детская\nкосметика', Icons.spa_outlined),
+    ('Бытовая\nхимия', Icons.cleaning_services_outlined),
+    ('Салфетки', Icons.layers_outlined),
+    ('Другое', Icons.toys_outlined),
   ];
 
   @override
   Widget build(BuildContext context) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: items
+      children: _items
           .map(
             (item) => Expanded(
               child: InkWell(
@@ -232,15 +291,21 @@ class _Categories extends StatelessWidget {
                       AspectRatio(
                         aspectRatio: 1,
                         child: Container(
-                          constraints: const BoxConstraints(maxWidth: 64),
                           decoration: BoxDecoration(
-                            color: item.$3,
+                            color: Colors.white,
                             borderRadius: BorderRadius.circular(16),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Color(0x14000000),
+                                blurRadius: 6,
+                                offset: Offset(0, 2),
+                              ),
+                            ],
                           ),
                           child: Icon(
                             item.$2,
                             color: AppColors.purple,
-                            size: 27,
+                            size: 26,
                           ),
                         ),
                       ),
@@ -271,6 +336,8 @@ class _Categories extends StatelessWidget {
   }
 }
 
+// ── Section header ────────────────────────────────────────────────────────
+
 class _SectionHeader extends StatelessWidget {
   const _SectionHeader({required this.title});
 
@@ -285,15 +352,32 @@ class _SectionHeader extends StatelessWidget {
             title,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.titleLarge,
+            style: const TextStyle(
+              color: AppColors.navy,
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.2,
+            ),
           ),
         ),
         const SizedBox(width: 12),
-        TextButton(onPressed: () {}, child: const Text('Все  →')),
+        GestureDetector(
+          onTap: () {},
+          child: const Text(
+            'Все  →',
+            style: TextStyle(
+              color: AppColors.purple,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
       ],
     );
   }
 }
+
+// ── Brands ────────────────────────────────────────────────────────────────
 
 class _Brands extends StatelessWidget {
   const _Brands();
@@ -324,21 +408,30 @@ class _Brand extends StatelessWidget {
   Widget build(BuildContext context) {
     return Expanded(
       child: Container(
-        height: 54,
+        height: 50,
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.border),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x10000000),
+              blurRadius: 6,
+              offset: Offset(0, 2),
+            ),
+          ],
         ),
         child: FittedBox(
           fit: BoxFit.scaleDown,
-          child: Text(
-            name,
-            style: TextStyle(
-              color: color,
-              fontSize: 13,
-              fontWeight: FontWeight.w900,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 6),
+            child: Text(
+              name,
+              style: TextStyle(
+                color: color,
+                fontSize: 13,
+                fontWeight: FontWeight.w900,
+              ),
             ),
           ),
         ),
@@ -347,6 +440,8 @@ class _Brand extends StatelessWidget {
   }
 }
 
+// ── Promotion banner ──────────────────────────────────────────────────────
+
 class _PromotionBanner extends StatelessWidget {
   const _PromotionBanner();
 
@@ -354,7 +449,7 @@ class _PromotionBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final height = (constraints.maxWidth / 3.55).clamp(88.0, 116.0);
+        final height = (constraints.maxWidth / 3.4).clamp(90.0, 120.0);
 
         return ClipRRect(
           borderRadius: AppRadii.cardBorder,
@@ -368,15 +463,26 @@ class _PromotionBanner extends StatelessWidget {
                   fit: BoxFit.cover,
                   alignment: Alignment.centerRight,
                 ),
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.white.withAlpha(200),
+                        Colors.white.withAlpha(0),
+                      ],
+                      stops: const [0.5, 1.0],
+                    ),
+                  ),
+                ),
                 Padding(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 17,
-                    vertical: 12,
+                    horizontal: 18,
+                    vertical: 14,
                   ),
                   child: Align(
                     alignment: Alignment.centerLeft,
                     child: FractionallySizedBox(
-                      widthFactor: .56,
+                      widthFactor: .55,
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -391,19 +497,20 @@ class _PromotionBanner extends StatelessWidget {
                                 fontSize: 21,
                                 fontWeight: FontWeight.w900,
                                 height: 1.05,
+                                letterSpacing: -0.3,
                               ),
                             ),
                           ),
-                          const SizedBox(height: 5),
-                          Text(
+                          const SizedBox(height: 4),
+                          const Text(
                             'На товары для малышей',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.bodySmall
-                                ?.copyWith(
-                                  color: AppColors.navyMuted,
-                                  fontWeight: FontWeight.w600,
-                                ),
+                            style: TextStyle(
+                              color: AppColors.navyMuted,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                         ],
                       ),
@@ -418,6 +525,8 @@ class _PromotionBanner extends StatelessWidget {
     );
   }
 }
+
+// ── Product grid ──────────────────────────────────────────────────────────
 
 class _ProductGrid extends StatelessWidget {
   const _ProductGrid({required this.provider});
@@ -440,6 +549,9 @@ class _ProductGrid extends StatelessWidget {
         ),
         itemBuilder: (context, index) {
           final product = products[index];
+          final cartQty = provider.cartQuantityFor(product.id);
+          final canAdd =
+              product.inStock && cartQty < product.stockQuantity;
 
           return InkWell(
             borderRadius: AppRadii.cardBorder,
@@ -452,16 +564,22 @@ class _ProductGrid extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: AppColors.surface,
+                color: Colors.white,
                 borderRadius: AppRadii.cardBorder,
-                border: Border.all(color: AppColors.border),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0x0D000000),
+                    blurRadius: 8,
+                    offset: Offset(0, 2),
+                  ),
+                ],
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
                     child: ClipRRect(
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(12),
                       child: SizedBox(
                         width: double.infinity,
                         child: ProductImage(
@@ -471,18 +589,39 @@ class _ProductGrid extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 8),
                   Text(
                     product.title,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
+                      color: AppColors.navy,
                       fontSize: 12,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w600,
+                      height: 1.3,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 3),
+                  Text(
+                    !product.inStock
+                        ? 'Нет в наличии'
+                        : canAdd
+                            ? 'В наличии'
+                            : 'Максимум в корзине',
+                    maxLines: 1,
+                    style: TextStyle(
+                      color: !product.inStock
+                          ? Colors.red.shade600
+                          : canAdd
+                              ? const Color(0xFF1E7D47)
+                              : AppColors.navyMuted,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
                   Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       Expanded(
                         child: Text(
@@ -495,18 +634,11 @@ class _ProductGrid extends StatelessWidget {
                           ),
                         ),
                       ),
-                      InkWell(
-                        borderRadius: BorderRadius.circular(10),
-                        onTap: () => provider.addToCart(product),
-                        child: Container(
-                          width: 34,
-                          height: 34,
-                          decoration: BoxDecoration(
-                            color: AppColors.purple,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: const Icon(Icons.add, color: Colors.white),
-                        ),
+                      _AddButton(
+                        canAdd: canAdd,
+                        onTap: canAdd
+                            ? () => provider.addToCart(product)
+                            : null,
                       ),
                     ],
                   ),
@@ -515,6 +647,52 @@ class _ProductGrid extends StatelessWidget {
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+// ── Add button with scale feedback ───────────────────────────────────────
+
+class _AddButton extends StatefulWidget {
+  const _AddButton({required this.canAdd, this.onTap});
+
+  final bool canAdd;
+  final VoidCallback? onTap;
+
+  @override
+  State<_AddButton> createState() => _AddButtonState();
+}
+
+class _AddButtonState extends State<_AddButton> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) {
+        setState(() => _pressed = false);
+        widget.onTap?.call();
+      },
+      onTapCancel: () => setState(() => _pressed = false),
+      child: AnimatedScale(
+        scale: (_pressed && widget.canAdd) ? 0.86 : 1.0,
+        duration: const Duration(milliseconds: 90),
+        curve: Curves.easeInOut,
+        child: Container(
+          width: 34,
+          height: 34,
+          decoration: BoxDecoration(
+            color: widget.canAdd ? AppColors.yellow : AppColors.border,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(
+            Icons.add,
+            size: 18,
+            color: widget.canAdd ? AppColors.navy : AppColors.navyMuted,
+          ),
+        ),
       ),
     );
   }

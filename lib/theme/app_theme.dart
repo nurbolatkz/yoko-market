@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 
 abstract final class AppColors {
-  static const background = Color(0xFFF9F8FF);
+  static const background = Color(0xFFFAF9F6); // warm white
   static const surface = Colors.white;
-  static const navy = Color(0xFF17152F);
+  static const navy = Color(0xFF202039);
   static const navyMuted = Color(0xFF66637A);
-  static const purple = Color(0xFF6750F5);
-  static const purpleDark = Color(0xFF4F37D9);
-  static const purpleSoft = Color(0xFFEDE9FF);
-  static const yellow = Color(0xFFFFC62F);
-  static const border = Color(0xFFEAE7F2);
+  static const purple = Color(0xFF6D35D4);
+  static const purpleDark = Color(0xFF5428AB);
+  static const purpleSoft = Color(0xFFEDE8FA);
+  static const yellow = Color(0xFFFFD84F);
+  static const border = Color(0xFFEEECF3);
 }
 
 abstract final class AppRadii {

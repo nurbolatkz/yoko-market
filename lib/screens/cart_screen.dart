@@ -7,6 +7,7 @@ import '../providers/market_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/product_image.dart';
 import 'auth/phone_screen.dart';
+import 'checkout_screen.dart';
 
 class CartScreen extends StatelessWidget {
   const CartScreen({super.key, this.onGoToCatalog});
@@ -323,18 +324,22 @@ class _SummaryBar extends StatelessWidget {
 
   void _onCheckout(BuildContext context) {
     final auth = context.read<AuthProvider>();
+    final nav = Navigator.of(context);
     if (!auth.isAuthenticated) {
-      Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => const PhoneScreen()),
+      nav.push(
+        MaterialPageRoute(
+          builder: (_) => PhoneScreen(
+            // After login: PhoneScreen pops itself, CheckoutScreen is already
+            // pushed on the stack → user lands directly on checkout.
+            onSuccess: () => nav.push(
+              MaterialPageRoute(builder: (_) => const CheckoutScreen()),
+            ),
+          ),
+        ),
       );
       return;
     }
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Оформление заказа скоро будет доступно'),
-        duration: Duration(seconds: 2),
-      ),
-    );
+    nav.push(MaterialPageRoute(builder: (_) => const CheckoutScreen()));
   }
 
   @override

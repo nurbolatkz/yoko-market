@@ -3,8 +3,10 @@ import 'package:provider/provider.dart';
 
 import '../providers/auth_provider.dart';
 import '../providers/market_provider.dart';
+import '../providers/orders_provider.dart';
 import '../theme/app_theme.dart';
 import 'auth/phone_screen.dart';
+import 'orders_screen.dart';
 import 'product_detail_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -15,8 +17,12 @@ class ProfileScreen extends StatelessWidget {
     final auth = context.watch<AuthProvider>();
 
     if (auth.state == AuthState.unknown) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+      return const Scaffold(backgroundColor: AppColors.background);
+    }
+
+    if (auth.state == AuthState.sessionError) {
+      return _SessionErrorView(
+        onRetry: () => context.read<AuthProvider>().retryInit(),
       );
     }
 
@@ -83,6 +89,59 @@ class _GuestView extends StatelessWidget {
                     ),
                   ),
                   child: const Text('Войти', style: TextStyle(fontSize: 16)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SessionErrorView extends StatelessWidget {
+  const _SessionErrorView({required this.onRetry});
+
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Профиль', style: TextStyle(fontWeight: FontWeight.bold)),
+      ),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.wifi_off_rounded, size: 64, color: theme.colorScheme.outline),
+              const SizedBox(height: 16),
+              Text(
+                'Не удалось восстановить сессию',
+                textAlign: TextAlign.center,
+                style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Проверьте подключение к интернету',
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 24),
+              FilledButton.icon(
+                onPressed: onRetry,
+                icon: const Icon(Icons.refresh_rounded),
+                label: const Text('Повторить'),
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
               ),
             ],
@@ -251,6 +310,32 @@ class _AuthenticatedView extends StatelessWidget {
               ],
             ),
           ),
+          const SizedBox(height: 16),
+          Text(
+            'Заказы',
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Card(
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: BorderSide(
+                color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+              ),
+            ),
+            child: ListTile(
+              leading: const Icon(Icons.receipt_long_outlined),
+              title: const Text('Мои заказы'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const OrdersScreen()),
+              ),
+            ),
+          ),
           if (wishlist.isNotEmpty) ...[
             const SizedBox(height: 24),
             Text(
@@ -343,6 +428,7 @@ class _AuthenticatedView extends StatelessWidget {
           ),
           FilledButton(
             onPressed: () {
+              ctx.read<OrdersProvider>().clearOrders();
               auth.logout();
               Navigator.pop(ctx);
             },

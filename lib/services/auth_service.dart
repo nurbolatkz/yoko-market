@@ -119,6 +119,8 @@ class AuthService {
     }
   }
 
+  Future<String?> getAccessToken() => _storage.read(key: _accessKey);
+
   Future<bool> hasSession() async =>
       await _storage.read(key: _refreshKey) != null;
 

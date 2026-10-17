@@ -92,6 +92,9 @@ class _OtpScreenState extends State<OtpScreen> {
       if (!mounted) return;
       final detail = _detail(e);
       if (detail == 'too_many_attempts') _tooManyAttempts = true;
+      // Server expired the Redis key before the client timer hit zero (clock drift).
+      // Force the client timer to zero so the verify button is disabled consistently.
+      if (detail == 'code_expired') _ttlSeconds = 0;
       setState(() => _error = _mapVerifyError(detail));
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -146,8 +149,13 @@ class _OtpScreenState extends State<OtpScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Подтверждение')),
-      body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+      body: SingleChildScrollView(
+        padding: EdgeInsets.fromLTRB(
+          24,
+          32,
+          24,
+          MediaQuery.of(context).viewInsets.bottom + 24,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
