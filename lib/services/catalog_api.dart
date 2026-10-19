@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 
 import '../config/app_config.dart';
+import '../models/banner_item.dart';
 import '../models/product.dart';
 import '../models/product_category.dart';
 
@@ -13,6 +14,10 @@ abstract interface class CatalogDataSource {
     int limit = 50,
     int offset = 0,
   });
+
+  Future<List<BannerItem>> getBanners();
+
+  Future<Map<String, dynamic>> getBannerById(String id);
 }
 
 class CatalogApi implements CatalogDataSource {
@@ -61,6 +66,21 @@ class CatalogApi implements CatalogDataSource {
     );
 
     return _listOfMaps(response.data).map(Product.fromApiJson).toList();
+  }
+
+  @override
+  Future<List<BannerItem>> getBanners() async {
+    final response = await _dio.get<dynamic>('/banners');
+    return _listOfMaps(response.data).map(BannerItem.fromJson).toList();
+  }
+
+  @override
+  Future<Map<String, dynamic>> getBannerById(String id) async {
+    final response = await _dio.get<dynamic>('/banners/$id');
+    if (response.data is Map<String, dynamic>) {
+      return response.data as Map<String, dynamic>;
+    }
+    throw Exception('unexpected_response');
   }
 }
 
