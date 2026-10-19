@@ -46,7 +46,10 @@ class YokoMarketApp extends StatelessWidget {
         ),
         ChangeNotifierProvider<MarketProvider>(
           create: (_) =>
-              (marketProvider ?? MarketProvider())..loadCatalog()..loadFeatured(),
+              (marketProvider ?? MarketProvider())
+                ..loadCatalog()
+                ..loadFeatured()
+                ..loadBanners(),
         ),
         ChangeNotifierProvider<OrdersProvider>(
           create: (_) => OrdersProvider(),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:yokomarket/main.dart';
+import 'package:yokomarket/models/banner_item.dart';
 import 'package:yokomarket/models/product.dart';
 import 'package:yokomarket/models/product_category.dart';
 import 'package:yokomarket/providers/market_provider.dart';
@@ -38,8 +39,9 @@ void main() {
     // Build our app and trigger a frame.
     await _pumpTestApp(tester);
 
-    expect(find.byType(TextField), findsOneWidget);
-    expect(find.text('YokoSun'), findsWidgets);
+    // Search was moved to the Catalog tab; Home no longer has a TextField.
+    expect(find.byType(TextField), findsNothing);
+    expect(find.text('Алматы'), findsOneWidget);
   });
 
   testWidgets('Home and Catalog use the same product image URL', (
@@ -97,8 +99,9 @@ void main() {
       await tester.pump();
     }
 
-    expect(find.byType(TextField), findsOneWidget);
-    expect(find.text('YokoSun'), findsWidgets);
+    // Search is on Catalog tab, not Home; no TextField expected on Home.
+    expect(find.byType(TextField), findsNothing);
+    expect(find.text('Алматы'), findsOneWidget);
     expect(find.textContaining('Aura'), findsNothing);
   });
 
@@ -195,6 +198,13 @@ class _FakeCatalogDataSource implements CatalogDataSource {
     ProductCategory(id: '1', name: 'Подгузники'),
     ProductCategory(id: '2', name: 'Салфетки'),
   ];
+
+  @override
+  Future<List<BannerItem>> getBanners() async => const [];
+
+  @override
+  Future<Map<String, dynamic>> getBannerById(String id) async =>
+      throw Exception('not_found');
 
   @override
   Future<List<Product>> getProducts({

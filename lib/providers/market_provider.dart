@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../models/banner_item.dart';
 import '../models/cart_item.dart';
 import '../models/product.dart';
 import '../models/product_category.dart';
@@ -63,6 +64,11 @@ class MarketProvider with ChangeNotifier {
   List<Product> get featuredProducts => List.unmodifiable(_featuredProducts);
   bool get featuredLoading => _featuredLoading;
 
+  List<BannerItem> _banners = const [];
+  bool _bannersLoading = false;
+  List<BannerItem> get banners => List.unmodifiable(_banners);
+  bool get bannersLoading => _bannersLoading;
+
   Future<void> loadFeatured() async {
     _featuredLoading = true;
     notifyListeners();
@@ -70,6 +76,18 @@ class MarketProvider with ChangeNotifier {
       _featuredProducts = await _catalogDataSource.getProducts(limit: 4);
     } catch (_) {}
     _featuredLoading = false;
+    notifyListeners();
+  }
+
+  Future<void> loadBanners() async {
+    _bannersLoading = true;
+    notifyListeners();
+    try {
+      _banners = await _catalogDataSource.getBanners();
+    } catch (_) {
+      _banners = const [];
+    }
+    _bannersLoading = false;
     notifyListeners();
   }
 
