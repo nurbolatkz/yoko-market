@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/auth_provider.dart';
-import '../providers/market_provider.dart';
 import '../providers/orders_provider.dart';
 import '../theme/app_theme.dart';
 import 'auth/phone_screen.dart';
 import 'orders_screen.dart';
-import 'product_detail_screen.dart';
+
+// Profile screen uses a light-lavender tint (#F8F7FC) rather than the app's
+// default warm-white (#FAF9F6) to match the design reference.
+const _kProfileBg = Color(0xFFF8F7FC);
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -17,7 +19,7 @@ class ProfileScreen extends StatelessWidget {
     final auth = context.watch<AuthProvider>();
 
     if (auth.state == AuthState.unknown) {
-      return const Scaffold(backgroundColor: AppColors.background);
+      return const Scaffold(backgroundColor: _kProfileBg);
     }
 
     if (auth.state == AuthState.sessionError) {
@@ -38,6 +40,8 @@ class ProfileScreen extends StatelessWidget {
   }
 }
 
+// ── Guest view ────────────────────────────────────────────────────────────────
+
 class _GuestView extends StatelessWidget {
   const _GuestView({required this.onLogin});
 
@@ -57,7 +61,7 @@ class _GuestView extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
+              const Icon(
                 Icons.person_outline_rounded,
                 size: 72,
                 color: AppColors.purple,
@@ -98,6 +102,8 @@ class _GuestView extends StatelessWidget {
     );
   }
 }
+
+// ── Session error view ────────────────────────────────────────────────────────
 
 class _SessionErrorView extends StatelessWidget {
   const _SessionErrorView({required this.onRetry});
@@ -152,268 +158,113 @@ class _SessionErrorView extends StatelessWidget {
   }
 }
 
-class _AuthenticatedView extends StatelessWidget {
+// ── Authenticated view ────────────────────────────────────────────────────────
+
+class _AuthenticatedView extends StatefulWidget {
   const _AuthenticatedView({required this.auth});
 
   final AuthProvider auth;
 
   @override
+  State<_AuthenticatedView> createState() => _AuthenticatedViewState();
+}
+
+class _AuthenticatedViewState extends State<_AuthenticatedView> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.read<OrdersProvider>().fetchOrders(context.read<AuthProvider>());
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final user = auth.user!;
-    final wishlist = context.watch<MarketProvider>().favoriteProducts;
+    final user = widget.auth.user!;
+    final op = context.watch<OrdersProvider>();
+    final hasOrders = !op.loading && op.error == null && op.orders.isNotEmpty;
 
     return Scaffold(
+      backgroundColor: _kProfileBg,
       appBar: AppBar(
-        title: const Text('Профиль', style: TextStyle(fontWeight: FontWeight.bold)),
+        backgroundColor: _kProfileBg,
+        title: const Text('Профиль'),
         actions: [
           TextButton.icon(
-            onPressed: () => _confirmLogout(context, auth),
+            onPressed: () => _confirmLogout(context, widget.auth),
             icon: const Icon(Icons.logout, size: 18),
             label: const Text('Выйти'),
           ),
         ],
       ),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
         children: [
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  theme.colorScheme.primary,
-                  theme.colorScheme.tertiary,
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 36,
-                  backgroundColor: Colors.white.withValues(alpha: 0.2),
-                  child: Text(
-                    _initials(user.displayName),
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        user.displayName,
-                        style: theme.textTheme.titleLarge?.copyWith(
-                          color: theme.colorScheme.onPrimary,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        user.phone,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onPrimary.withValues(
-                            alpha: 0.85,
-                          ),
-                        ),
-                      ),
-                      if (user.loyaltyTierLabel != null) ...[
-                        const SizedBox(height: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            user.loyaltyTierLabel!,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
+          // 1. Header: greeting + phone
+          _ProfileHeader(phone: user.phone, fullName: user.fullName),
           const SizedBox(height: 16),
-          if (user.bonusBalance > 0)
-            Card(
-              elevation: 0,
-              color: AppColors.purpleSoft,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: ListTile(
-                leading: const Icon(Icons.stars_rounded, color: AppColors.purple),
-                title: const Text(
-                  'Бонусный баланс',
-                  style: TextStyle(fontWeight: FontWeight.w600),
-                ),
-                trailing: Text(
-                  '${user.bonusBalance} ₸',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                    color: AppColors.purple,
-                  ),
-                ),
-              ),
-            ),
-          const SizedBox(height: 16),
-          Text(
-            'Данные аккаунта',
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+
+          // 2. Loyalty card
+          _LoyaltyCard(
+            balance: user.bonusBalance,
+            tierLabel: user.loyaltyTierLabel,
           ),
-          const SizedBox(height: 8),
-          Card(
-            elevation: 0,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-              side: BorderSide(
-                color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
-              ),
-            ),
-            child: Column(
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.phone_outlined),
-                  title: const Text('Телефон'),
-                  subtitle: Text(user.phone),
-                ),
-                if (user.address != null && user.address!.isNotEmpty) ...[
-                  const Divider(height: 1, indent: 56),
-                  ListTile(
-                    leading: const Icon(Icons.location_on_outlined),
-                    title: const Text('Адрес доставки'),
-                    subtitle: Text(user.address!),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Заказы',
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Card(
-            elevation: 0,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-              side: BorderSide(
-                color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
-              ),
-            ),
-            child: ListTile(
-              leading: const Icon(Icons.receipt_long_outlined),
-              title: const Text('Мои заказы'),
-              trailing: const Icon(Icons.chevron_right),
+
+          // 3. Reorder button — only visible when past orders exist
+          if (hasOrders) ...[
+            const SizedBox(height: 12),
+            _ReorderButton(
               onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => const OrdersScreen()),
               ),
             ),
-          ),
-          if (wishlist.isNotEmpty) ...[
-            const SizedBox(height: 24),
-            Text(
-              'Избранное (${wishlist.length})',
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            SizedBox(
-              height: 160,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                itemCount: wishlist.length,
-                itemBuilder: (context, index) {
-                  final product = wishlist[index];
-                  return GestureDetector(
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => ProductDetailScreen(product: product),
-                      ),
-                    ),
-                    child: Container(
-                      width: 120,
-                      margin: const EdgeInsets.only(right: 12),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: theme.colorScheme.outlineVariant.withValues(
-                            alpha: 0.5,
-                          ),
-                        ),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(8),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              product.title,
-                              maxLines: 3,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w600,
-                                fontSize: 12,
-                              ),
-                            ),
-                            const Spacer(),
-                            Text(
-                              '${product.price.toStringAsFixed(0)} ₸',
-                              style: TextStyle(
-                                color: theme.colorScheme.primary,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
           ],
-          const SizedBox(height: 32),
+
+          // 4. Menu
+          const SizedBox(height: 16),
+          _buildMenu(context),
         ],
       ),
     );
   }
 
-  String _initials(String name) {
-    final parts = name.trim().split(RegExp(r'\s+'));
-    if (parts.length >= 2) {
-      return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
-    }
-    return name.isNotEmpty ? name[0].toUpperCase() : '?';
+  Widget _buildMenu(BuildContext context) {
+    return Column(
+      children: [
+        // Мои заказы → existing OrdersScreen
+        _MenuItem(
+          title: 'Мои заказы',
+          subtitle: 'Статусы и история',
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const OrdersScreen()),
+          ),
+        ),
+        const SizedBox(height: 8),
+        // Destinations below are not yet implemented — shown disabled with "Скоро".
+        const _MenuItem(
+          title: 'История монет',
+          subtitle: 'Начисления и списания',
+        ),
+        const SizedBox(height: 8),
+        const _MenuItem(
+          title: 'Пригласить друга',
+          subtitle: 'Код и условия приглашения',
+        ),
+        const SizedBox(height: 8),
+        const _MenuItem(
+          title: 'Игры',
+          subtitle: 'Развлечения и награды',
+        ),
+        const SizedBox(height: 8),
+        const _MenuItem(
+          title: 'Адреса и настройки',
+          subtitle: 'Личные данные и доставка',
+        ),
+      ],
+    );
   }
 
   void _confirmLogout(BuildContext context, AuthProvider auth) {
@@ -438,4 +289,271 @@ class _AuthenticatedView extends StatelessWidget {
       ),
     );
   }
+}
+
+// ── Profile header ────────────────────────────────────────────────────────────
+
+class _ProfileHeader extends StatelessWidget {
+  const _ProfileHeader({required this.phone, required this.fullName});
+
+  final String phone;
+  final String? fullName;
+
+  @override
+  Widget build(BuildContext context) {
+    final first = _firstName(fullName);
+    final greeting = first != null ? 'Сәлем, $first' : 'Сәлем!';
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          greeting,
+          style: const TextStyle(
+            color: AppColors.navy,
+            fontSize: 26,
+            fontWeight: FontWeight.w800,
+            height: 1.15,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          _formatPhone(phone),
+          style: const TextStyle(
+            color: AppColors.navyMuted,
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ── Loyalty card ──────────────────────────────────────────────────────────────
+
+class _LoyaltyCard extends StatelessWidget {
+  const _LoyaltyCard({required this.balance, required this.tierLabel});
+
+  final int balance;
+  final String? tierLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    final label = (tierLabel ?? 'МОИ YOCOIN').toUpperCase();
+    return Semantics(
+      label: 'Бонусный баланс: $balance YoCoin',
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: const BoxDecoration(
+          color: AppColors.purple,
+          borderRadius: AppRadii.cardBorder,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.70),
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.8,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _fmtBalance(balance),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 38,
+                fontWeight: FontWeight.w800,
+                height: 1.1,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              'Бонусы для следующих покупок',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.75),
+                fontSize: 13,
+              ),
+            ),
+            const SizedBox(height: 14),
+            Container(height: 1, color: Colors.white.withValues(alpha: 0.15)),
+            const SizedBox(height: 14),
+            const Text(
+              'До 10% кэшбэка · До 100% заказа бонусами',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Бесплатная доставка от 10 000 ₸',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.75),
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Reorder button ────────────────────────────────────────────────────────────
+
+class _ReorderButton extends StatelessWidget {
+  const _ReorderButton({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: FilledButton.icon(
+        onPressed: onTap,
+        icon: const Icon(Icons.replay_rounded, size: 18),
+        label: const Text('Повторить заказ'),
+        style: FilledButton.styleFrom(
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadii.button),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Menu item ─────────────────────────────────────────────────────────────────
+
+class _MenuItem extends StatelessWidget {
+  const _MenuItem({
+    required this.title,
+    required this.subtitle,
+    this.onTap,
+  });
+
+  final String title;
+  final String subtitle;
+  final VoidCallback? onTap;
+
+  bool get _available => onTap != null;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: _available,
+      enabled: _available,
+      label: _available ? null : '$title — скоро',
+      child: Material(
+        color: AppColors.surface,
+        borderRadius: AppRadii.cardBorder,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: AppRadii.cardBorder,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: TextStyle(
+                          color: _available ? AppColors.navy : AppColors.navyMuted,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle,
+                        style: const TextStyle(
+                          color: AppColors.navyMuted,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w400,
+                          height: 1.3,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                if (_available)
+                  const Icon(
+                    Icons.chevron_right_rounded,
+                    color: AppColors.navyMuted,
+                    size: 20,
+                  )
+                else
+                  const _SoonBadge(),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SoonBadge extends StatelessWidget {
+  const _SoonBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: AppColors.purpleSoft,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: const Text(
+        'Скоро',
+        style: TextStyle(
+          color: AppColors.purple,
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 0.2,
+        ),
+      ),
+    );
+  }
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+// Returns the first name from a full name string, or null if unavailable.
+String? _firstName(String? fullName) {
+  if (fullName == null || fullName.trim().isEmpty) return null;
+  return fullName.trim().split(RegExp(r'\s+')).first;
+}
+
+// Formats an E.164 KZ phone number (+7XXXXXXXXXX) as +7 XXX XXX XX XX.
+String _formatPhone(String phone) {
+  final digits = phone.replaceAll(RegExp(r'\D'), '');
+  if (digits.length == 11 && digits.startsWith('7')) {
+    final n = digits.substring(1);
+    return '+7 ${n.substring(0, 3)} ${n.substring(3, 6)} '
+        '${n.substring(6, 8)} ${n.substring(8, 10)}';
+  }
+  return phone;
+}
+
+// Formats an integer balance with thousands separators (space-separated).
+String _fmtBalance(int amount) {
+  if (amount == 0) return '0';
+  return amount.toString().replaceAllMapped(
+    RegExp(r'(\d)(?=(\d{3})+(?!\d))'),
+    (m) => '${m[1]} ',
+  );
 }

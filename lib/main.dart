@@ -5,11 +5,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'config/app_config.dart';
 import 'providers/auth_provider.dart';
 import 'providers/market_provider.dart';
 import 'providers/orders_provider.dart';
 import 'screens/main_screen.dart';
 import 'screens/welcome_screen.dart';
+import 'services/preview_auth.dart';
 import 'theme/app_theme.dart';
 
 /// True when running under `flutter test` (FLUTTER_TEST env var is set by
@@ -37,7 +39,10 @@ class YokoMarketApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider<AuthProvider>(
-          create: (_) => AuthProvider()..init(),
+          create: (_) => (AppConfig.uiPreview
+                  ? AuthProvider(authService: PreviewAuthService())
+                  : AuthProvider())
+              ..init(),
         ),
         ChangeNotifierProvider<MarketProvider>(
           create: (_) =>

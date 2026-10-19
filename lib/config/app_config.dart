@@ -1,4 +1,6 @@
 abstract final class AppConfig {
+  static const uiPreview = bool.fromEnvironment('UI_PREVIEW');
+
   // Override at build time with --dart-define=API_BASE=<url>
   // Android emulator → local backend:  --dart-define=API_BASE=http://10.0.2.2:8010/api/v1
   // iOS Simulator   → local backend:  --dart-define=API_BASE=http://127.0.0.1:8010/api/v1
