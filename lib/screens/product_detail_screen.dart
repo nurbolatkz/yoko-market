@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../models/product.dart';
+import '../providers/auth_provider.dart';
 import '../providers/market_provider.dart';
+import '../providers/wishlist_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/product_image.dart';
 
@@ -24,7 +26,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final provider = context.watch<MarketProvider>();
-    final isFav = provider.isFavorite(_product.id);
+    final wishlist = context.watch<WishlistProvider>();
+    final isFav = wishlist.isFavorite(_product.id);
     final cartQty = provider.cartQuantityFor(_product.id);
     final availableToAdd = (_product.stockQuantity - cartQty).clamp(0, _product.stockQuantity);
 
@@ -48,7 +51,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     size: 22,
                   ),
                 ),
-                onPressed: () => provider.toggleFavorite(_product.id),
+                onPressed: () async {
+                  final token = await context.read<AuthProvider>().getAccessToken();
+                  context.read<WishlistProvider>().toggle(_product, accessToken: token);
+                },
               ),
               const SizedBox(width: 8),
             ],

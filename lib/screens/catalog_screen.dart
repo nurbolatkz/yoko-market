@@ -5,7 +5,9 @@ import 'package:provider/provider.dart';
 
 import '../models/banner_item.dart';
 import '../models/product.dart';
+import '../providers/auth_provider.dart';
 import '../providers/market_provider.dart';
+import '../providers/wishlist_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/product_image.dart';
 import 'product_detail_screen.dart';
@@ -782,6 +784,8 @@ class _ProductGrid extends StatelessWidget {
           final discPct = hasDiscount
               ? ((1 - product.price / product.originalPrice!) * 100).round()
               : 0;
+          final wishlist = context.watch<WishlistProvider>();
+          final isFav = wishlist.isFavorite(product.id);
 
           return InkWell(
             borderRadius: AppRadii.cardBorder,
@@ -848,6 +852,35 @@ class _ProductGrid extends StatelessWidget {
                               ),
                             ),
                           ),
+                        Positioned(
+                          top: 4,
+                          right: 4,
+                          child: GestureDetector(
+                            onTap: () async {
+                              final token = await context
+                                  .read<AuthProvider>()
+                                  .getAccessToken();
+                              wishlist.toggle(product, accessToken: token);
+                            },
+                            child: Container(
+                              width: 28,
+                              height: 28,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withAlpha(220),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                isFav
+                                    ? Icons.favorite_rounded
+                                    : Icons.favorite_border_rounded,
+                                size: 16,
+                                color: isFav
+                                    ? Colors.redAccent
+                                    : AppColors.navyMuted,
+                              ),
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -984,6 +1017,8 @@ class _HorizontalProductRow extends StatelessWidget {
           final canAdd = product.inStock && cartQty < product.stockQuantity;
           final hasDiscount = product.originalPrice != null &&
               product.originalPrice! > product.price;
+          final wishlist = context.watch<WishlistProvider>();
+          final isFav = wishlist.isFavorite(product.id);
 
           return GestureDetector(
             onTap: () {
@@ -1044,6 +1079,35 @@ class _HorizontalProductRow extends StatelessWidget {
                               ),
                             ),
                           ),
+                        Positioned(
+                          top: 4,
+                          right: 4,
+                          child: GestureDetector(
+                            onTap: () async {
+                              final token = await context
+                                  .read<AuthProvider>()
+                                  .getAccessToken();
+                              wishlist.toggle(product, accessToken: token);
+                            },
+                            child: Container(
+                              width: 24,
+                              height: 24,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withAlpha(220),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                isFav
+                                    ? Icons.favorite_rounded
+                                    : Icons.favorite_border_rounded,
+                                size: 14,
+                                color: isFav
+                                    ? Colors.redAccent
+                                    : AppColors.navyMuted,
+                              ),
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ),
