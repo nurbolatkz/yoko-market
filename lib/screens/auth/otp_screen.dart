@@ -34,6 +34,7 @@ class _OtpScreenState extends State<OtpScreen> {
   bool _loading = false;
   bool _resending = false;
   bool _tooManyAttempts = false;
+  bool _submitted = false; // prevents double-submit from auto-fill + button tap
   String? _error;
 
   // Two separate counters managed by a single timer.
@@ -76,9 +77,10 @@ class _OtpScreenState extends State<OtpScreen> {
 
   Future<void> _verify() async {
     final code = _controller.text.trim();
-    if (code.length != 6 || _loading || _tooManyAttempts || _ttlSeconds == 0) {
+    if (code.length != 6 || _loading || _submitted || _tooManyAttempts || _ttlSeconds == 0) {
       return;
     }
+    _submitted = true; // set before setState — blocks any concurrent call
     setState(() {
       _loading = true;
       _error = null;
@@ -95,6 +97,7 @@ class _OtpScreenState extends State<OtpScreen> {
       // Server expired the Redis key before the client timer hit zero (clock drift).
       // Force the client timer to zero so the verify button is disabled consistently.
       if (detail == 'code_expired') _ttlSeconds = 0;
+      _submitted = false; // allow retry after a real error
       setState(() => _error = _mapVerifyError(detail));
     } finally {
       if (mounted) setState(() => _loading = false);
