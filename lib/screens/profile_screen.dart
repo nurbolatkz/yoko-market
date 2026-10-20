@@ -6,6 +6,7 @@ import '../providers/orders_provider.dart';
 import '../theme/app_theme.dart';
 import 'auth/phone_screen.dart';
 import 'orders_screen.dart';
+import 'yocoin_history_screen.dart';
 
 // Profile screen uses a light-lavender tint (#F8F7FC) rather than the app's
 // default warm-white (#FAF9F6) to match the design reference.
@@ -205,10 +206,18 @@ class _AuthenticatedViewState extends State<_AuthenticatedView> {
           _ProfileHeader(phone: user.phone, fullName: user.fullName),
           const SizedBox(height: 16),
 
-          // 2. Loyalty card
-          _LoyaltyCard(
-            balance: user.bonusBalance,
-            tierLabel: user.loyaltyTierLabel,
+          // 2. Loyalty card — taps through to YoCoin history
+          GestureDetector(
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const YoCoinHistoryScreen(),
+              ),
+            ),
+            child: _LoyaltyCard(
+              balance: user.bonusBalance,
+              tierLabel: user.loyaltyTierLabel,
+            ),
           ),
 
           // 3. Reorder button — only visible when past orders exist
@@ -243,10 +252,13 @@ class _AuthenticatedViewState extends State<_AuthenticatedView> {
           ),
         ),
         const SizedBox(height: 8),
-        // Destinations below are not yet implemented — shown disabled with "Скоро".
-        const _MenuItem(
+        _MenuItem(
           title: 'История монет',
           subtitle: 'Начисления и списания',
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const YoCoinHistoryScreen()),
+          ),
         ),
         const SizedBox(height: 8),
         const _MenuItem(
