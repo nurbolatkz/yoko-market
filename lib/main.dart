@@ -9,6 +9,7 @@ import 'config/app_config.dart';
 import 'providers/auth_provider.dart';
 import 'providers/market_provider.dart';
 import 'providers/orders_provider.dart';
+import 'providers/wishlist_provider.dart';
 import 'screens/main_screen.dart';
 import 'screens/welcome_screen.dart';
 import 'services/preview_auth.dart';
@@ -72,6 +73,21 @@ class YokoMarketApp extends StatelessWidget {
         ),
         ChangeNotifierProvider<OrdersProvider>(
           create: (_) => OrdersProvider(),
+        ),
+        // WishlistProvider syncs with backend when auth state changes.
+        ChangeNotifierProxyProvider<AuthProvider, WishlistProvider>(
+          create: (_) => WishlistProvider(),
+          update: (_, auth, wishlist) {
+            wishlist ??= WishlistProvider();
+            if (auth.isAuthenticated) {
+              auth.getAccessToken().then((token) {
+                if (token != null) wishlist!.syncAfterLogin(token);
+              });
+            } else if (auth.state == AuthState.guest) {
+              wishlist.clearForUser();
+            }
+            return wishlist;
+          },
         ),
       ],
       child: MaterialApp(

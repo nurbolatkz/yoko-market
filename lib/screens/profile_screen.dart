@@ -270,6 +270,15 @@ class _AuthenticatedViewState extends State<_AuthenticatedView> {
           title: 'Адреса и настройки',
           subtitle: 'Личные данные и доставка',
         ),
+        const SizedBox(height: 8),
+        _MenuItem(
+          title: 'Поддержка / FAQ',
+          subtitle: 'Вопросы, доставка, возврат',
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const SupportScreen()),
+          ),
+        ),
       ],
     );
   }

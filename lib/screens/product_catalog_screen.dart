@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../models/product.dart';
+import '../providers/auth_provider.dart';
 import '../providers/market_provider.dart';
+import '../providers/wishlist_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/product_image.dart';
 import 'product_detail_screen.dart';
@@ -215,10 +217,15 @@ class _ProductCatalogScreenState extends State<ProductCatalogScreen> {
                                       final p = products[index];
                                       final cartQty = provider.cartQuantityFor(p.id);
                                       final canAdd = p.inStock && cartQty < p.stockQuantity;
+                                      final wishlist = context.read<WishlistProvider>();
+                                      final auth = context.read<AuthProvider>();
                                       return CatalogProductCard(
                                         product: p,
-                                        isFavorite: provider.isFavorite(p.id),
-                                        onFavorite: () => provider.toggleFavorite(p.id),
+                                        isFavorite: context.watch<WishlistProvider>().isFavorite(p.id),
+                                        onFavorite: () async {
+                                          final token = await auth.getAccessToken();
+                                          wishlist.toggle(p, accessToken: token);
+                                        },
                                         onAdd: canAdd ? () => provider.addToCart(p) : null,
                                         onOpen: () => Navigator.push(
                                           context,
