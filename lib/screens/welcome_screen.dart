@@ -57,10 +57,20 @@ class _WelcomeOverlayState extends State<WelcomeOverlay>
   }
 
   Future<void> _play() async {
-    await _drawCtrl.forward();
-    _textCtrl.forward();
-    await Future.delayed(const Duration(milliseconds: 400));
-    await _exitCtrl.forward();
+    // Safety: dismiss after 5 s even if animation stalls (BlueStacks, low-end devices)
+    Future.delayed(const Duration(seconds: 5), () {
+      if (mounted) widget.onDone();
+    });
+
+    try {
+      await _drawCtrl.forward();
+      _textCtrl.forward();
+      await Future.delayed(const Duration(milliseconds: 400));
+      await _exitCtrl.forward();
+    } catch (_) {
+      // TickerCanceled or similar — widget is being disposed, skip onDone
+      return;
+    }
     if (mounted) widget.onDone();
   }
 
