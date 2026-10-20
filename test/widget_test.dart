@@ -39,8 +39,8 @@ void main() {
     // Build our app and trigger a frame.
     await _pumpTestApp(tester);
 
-    // Search was moved to the Catalog tab; Home no longer has a TextField.
-    expect(find.byType(TextField), findsNothing);
+    // Search bar is present on the Home tab.
+    expect(find.byKey(const Key('home-search')), findsOneWidget);
     expect(find.text('Алматы'), findsOneWidget);
   });
 
@@ -99,8 +99,8 @@ void main() {
       await tester.pump();
     }
 
-    // Search is on Catalog tab, not Home; no TextField expected on Home.
-    expect(find.byType(TextField), findsNothing);
+    // Search bar is present on Home tab.
+    expect(find.byKey(const Key('home-search')), findsOneWidget);
     expect(find.text('Алматы'), findsOneWidget);
     expect(find.textContaining('Aura'), findsNothing);
   });
@@ -151,7 +151,7 @@ void main() {
   ) async {
     await _pumpTestApp(tester);
 
-    await tester.tap(find.text('Салфетки'));
+    await tester.tap(find.byKey(const Key('home-category-Салфетки')));
     await tester.pumpAndSettle();
 
     expect(find.text('Каталог'), findsWidgets);
