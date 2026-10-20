@@ -29,6 +29,8 @@ class _MainScreenState extends State<MainScreen> {
           marketProvider.loadProducts();
           setState(() => _currentIndex = 1);
         },
+        onSearchSubmitted: () => setState(() => _currentIndex = 1),
+        onCartTapped: () => setState(() => _currentIndex = 2),
       ),
       const ProductCatalogScreen(),
       CartScreen(onGoToCatalog: () => setState(() => _currentIndex = 1)),

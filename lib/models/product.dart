@@ -5,6 +5,7 @@ class Product {
   final String title;
   final String description;
   final double price;
+  final double? originalPrice;
   final String imageUrl;
   final String category;
   final String packageInfo;
@@ -17,6 +18,7 @@ class Product {
     required this.title,
     required this.description,
     required this.price,
+    this.originalPrice,
     required this.imageUrl,
     required this.category,
     required this.packageInfo,
@@ -30,6 +32,7 @@ class Product {
     'title': title,
     'description': description,
     'price': price,
+    if (originalPrice != null) 'originalPrice': originalPrice,
     'imageUrl': imageUrl,
     'category': category,
     'packageInfo': packageInfo,
@@ -43,6 +46,7 @@ class Product {
     title: json['title'] as String? ?? '',
     description: json['description'] as String? ?? '',
     price: _asDouble(json['price']),
+    originalPrice: _asNullableDouble(json['originalPrice']),
     imageUrl: json['imageUrl'] as String? ?? '',
     category: json['category'] as String? ?? '',
     packageInfo: json['packageInfo'] as String? ?? '',
@@ -58,12 +62,14 @@ class Product {
     final salePrice = _asNullableDouble(
       json['promo_price'] ?? json['sale_price'],
     );
+    final basePrice = _asDouble(json['price']);
 
     return Product(
       id: '${json['id']}',
       title: json['name'] as String? ?? '',
       description: json['description'] as String? ?? '',
-      price: salePrice ?? _asDouble(json['price']),
+      price: salePrice ?? basePrice,
+      originalPrice: (salePrice != null && salePrice < basePrice) ? basePrice : null,
       imageUrl: _firstImageUrl(json) ?? '',
       category: json['category'] as String? ?? '',
       packageInfo: json['size'] != null && json['size'] != 'ONE'
