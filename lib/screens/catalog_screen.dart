@@ -65,10 +65,14 @@ class _CatalogScreenState extends State<CatalogScreen> {
                         },
                       ),
                       const SizedBox(height: 18),
+                      if (provider.bannersLoading && provider.banners.isEmpty)
+                        const _LoadingShimmer(height: 160),
                       if (provider.banners.isNotEmpty) ...[
                         _BannerCarousel(banners: provider.banners),
                         const SizedBox(height: 24),
                       ],
+                      if (!provider.bannersLoading && provider.banners.isEmpty)
+                        const SizedBox(height: 8),
                       _Categories(
                         categories: provider.categories,
                         onSelected: widget.onCategorySelected,
@@ -121,6 +125,7 @@ class _Header extends StatelessWidget {
           'assets/images/logo.png',
           height: 28,
           fit: BoxFit.fitHeight,
+          errorBuilder: (ctx, err, st) => const _FallbackLogo(),
         ),
         const Spacer(),
         GestureDetector(
@@ -890,7 +895,7 @@ class _ProductGrid extends StatelessWidget {
                         ),
                       ],
                     ),
-                  const Spacer(),
+                  const SizedBox(height: 6),
                   // Stepper or add button
                   Align(
                     alignment: Alignment.centerRight,
@@ -1137,6 +1142,101 @@ class _CartPanel extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+// ── Loading shimmer placeholder ───────────────────────────────────────────
+
+class _LoadingShimmer extends StatefulWidget {
+  const _LoadingShimmer({required this.height});
+  final double height;
+
+  @override
+  State<_LoadingShimmer> createState() => _LoadingShimmerState();
+}
+
+class _LoadingShimmerState extends State<_LoadingShimmer>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<double> _anim;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..repeat(reverse: true);
+    _anim = Tween<double>(begin: 0.4, end: 0.9).animate(
+      CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _anim,
+      builder: (ctx, child) => Opacity(
+        opacity: _anim.value,
+        child: Container(
+          height: widget.height,
+          decoration: BoxDecoration(
+            color: AppColors.border,
+            borderRadius: AppRadii.cardBorder,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Fallback logo (if asset fails) ────────────────────────────────────────
+
+class _FallbackLogo extends StatelessWidget {
+  const _FallbackLogo();
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 28,
+          height: 28,
+          decoration: const BoxDecoration(
+            color: AppColors.yellow,
+            shape: BoxShape.circle,
+          ),
+          child: const Center(
+            child: Text(
+              'Y',
+              style: TextStyle(
+                color: AppColors.purple,
+                fontSize: 17,
+                fontWeight: FontWeight.w900,
+                height: 1,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 6),
+        const Text(
+          'Yoko Market',
+          style: TextStyle(
+            color: AppColors.navy,
+            fontSize: 17,
+            fontWeight: FontWeight.w900,
+            letterSpacing: -0.3,
+          ),
+        ),
+      ],
     );
   }
 }
