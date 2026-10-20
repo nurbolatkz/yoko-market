@@ -13,12 +13,15 @@ class MarketProvider with ChangeNotifier {
   MarketProvider({CatalogDataSource? catalogDataSource})
     : _catalogDataSource = catalogDataSource ?? CatalogApi() {
     _loadCart();
+    _loadLastSeen();
   }
 
   final CatalogDataSource _catalogDataSource;
 
   static const int _pageSize = 50;
   static const String _cartKey = 'cart_v1';
+  static const String _lastSeenKey = 'last_seen_v1';
+  static const int _lastSeenMax = 10;
 
   List<Product> _products = const [];
   List<ProductCategory> _catalogCategories = const [];
@@ -69,14 +72,50 @@ class MarketProvider with ChangeNotifier {
   List<BannerItem> get banners => List.unmodifiable(_banners);
   bool get bannersLoading => _bannersLoading;
 
+  // ── Last seen ─────────────────────────────────────────────────────────────
+  final List<Product> _lastSeenProducts = [];
+  List<Product> get lastSeenProducts => List.unmodifiable(_lastSeenProducts);
+
   Future<void> loadFeatured() async {
     _featuredLoading = true;
     notifyListeners();
     try {
-      _featuredProducts = await _catalogDataSource.getProducts(limit: 4);
+      _featuredProducts = await _catalogDataSource.getProducts(limit: 6);
     } catch (_) {}
     _featuredLoading = false;
     notifyListeners();
+  }
+
+  void recordView(Product product) {
+    _lastSeenProducts.removeWhere((p) => p.id == product.id);
+    _lastSeenProducts.insert(0, product);
+    if (_lastSeenProducts.length > _lastSeenMax) {
+      _lastSeenProducts.removeRange(_lastSeenMax, _lastSeenProducts.length);
+    }
+    notifyListeners();
+    _saveLastSeen();
+  }
+
+  Future<void> _loadLastSeen() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_lastSeenKey);
+      if (raw == null || raw.isEmpty) return;
+      final list = jsonDecode(raw) as List<dynamic>;
+      _lastSeenProducts.addAll(
+        list.map((e) => Product.fromCartJson(e as Map<String, dynamic>)),
+      );
+      notifyListeners();
+    } catch (_) {}
+  }
+
+  void _saveLastSeen() {
+    SharedPreferences.getInstance()
+        .then((prefs) => prefs.setString(
+          _lastSeenKey,
+          jsonEncode(_lastSeenProducts.map((p) => p.toJson()).toList()),
+        ))
+        .catchError((_) => false);
   }
 
   Future<Map<String, dynamic>> getBannerById(String id) =>

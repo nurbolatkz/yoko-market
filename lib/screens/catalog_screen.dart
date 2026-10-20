@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../models/banner_item.dart';
+import '../models/product.dart';
 import '../providers/market_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/product_image.dart';
@@ -74,6 +75,27 @@ class _CatalogScreenState extends State<CatalogScreen> {
                         onSelected: widget.onCategorySelected,
                         onSeeAll: () => widget.onCategorySelected('All'),
                       ),
+                      if (provider.featuredProducts.isNotEmpty) ...[
+                        const SizedBox(height: 28),
+                        _SectionHeader(
+                          title: 'Лучшие предложения',
+                          onSeeAll: () => widget.onCategorySelected('All'),
+                        ),
+                        const SizedBox(height: 14),
+                        _HorizontalProductRow(
+                          products: provider.featuredProducts,
+                          provider: provider,
+                        ),
+                      ],
+                      if (provider.lastSeenProducts.isNotEmpty) ...[
+                        const SizedBox(height: 28),
+                        const _SectionHeader(title: 'Недавно просмотренные'),
+                        const SizedBox(height: 14),
+                        _HorizontalProductRow(
+                          products: provider.lastSeenProducts,
+                          provider: provider,
+                        ),
+                      ],
                       const SizedBox(height: 28),
                       _SectionHeader(
                         title: 'Популярные товары',
@@ -293,14 +315,12 @@ class _BannerCard extends StatelessWidget {
   final double height;
 
   void _onTap(BuildContext context) {
-    if (banner.isPromoOrGiveaway) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => PromotionDetailScreen(bannerId: banner.id),
-        ),
-      );
-    }
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PromotionDetailScreen(bannerId: banner.id),
+      ),
+    );
   }
 
   @override
@@ -322,7 +342,7 @@ class _BannerCard extends StatelessWidget {
         banner.discountBadge ?? (discPct != null ? '−$discPct%' : null);
 
     return GestureDetector(
-      onTap: banner.isPromoOrGiveaway ? () => _onTap(context) : null,
+      onTap: () => _onTap(context),
       child: ClipRRect(
         borderRadius: AppRadii.cardBorder,
         child: Container(
@@ -614,69 +634,75 @@ class _Categories extends StatelessWidget {
     return Icons.category_outlined;
   }
 
+  Widget _buildItem(int i, String name) {
+    final bgColor = _pastelColors[i % _pastelColors.length];
+    final iconColor = _iconColors[i % _iconColors.length];
+    return Expanded(
+      child: InkWell(
+        key: Key('home-category-$name'),
+        borderRadius: BorderRadius.circular(16),
+        onTap: () => onSelected(name),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 3),
+          child: Column(
+            children: [
+              AspectRatio(
+                aspectRatio: 1,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: bgColor,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Icon(_iconFor(name), color: iconColor, size: 26),
+                ),
+              ),
+              const SizedBox(height: 6),
+              SizedBox(
+                height: 30,
+                child: Text(
+                  name,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: AppColors.navy,
+                    fontSize: 10,
+                    height: 1.2,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final items = categories.where((c) => c != 'All').take(5).toList();
+    final items = categories.where((c) => c != 'All').take(8).toList();
     if (items.isEmpty) return const SizedBox.shrink();
+
+    // Split into rows of 4
+    final rows = <Widget>[];
+    for (var start = 0; start < items.length; start += 4) {
+      final rowItems = items.sublist(start, (start + 4).clamp(0, items.length));
+      // Pad to 4 with invisible fillers so items stay same width
+      final rowWidgets = [
+        ...rowItems.asMap().entries.map((e) => _buildItem(start + e.key, e.value)),
+        ...List.generate(4 - rowItems.length, (_) => const Expanded(child: SizedBox())),
+      ];
+      if (rows.isNotEmpty) rows.add(const SizedBox(height: 12));
+      rows.add(Row(crossAxisAlignment: CrossAxisAlignment.start, children: rowWidgets));
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _SectionHeader(title: 'Категории', onSeeAll: onSeeAll),
         const SizedBox(height: 12),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: items.asMap().entries.map((entry) {
-            final i = entry.key;
-            final name = entry.value;
-            final bgColor = _pastelColors[i % _pastelColors.length];
-            final iconColor = _iconColors[i % _iconColors.length];
-            return Expanded(
-              child: InkWell(
-                key: Key('home-category-$name'),
-                borderRadius: BorderRadius.circular(16),
-                onTap: () => onSelected(name),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 3),
-                  child: Column(
-                    children: [
-                      AspectRatio(
-                        aspectRatio: 1,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: bgColor,
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Icon(
-                            _iconFor(name),
-                            color: iconColor,
-                            size: 26,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      SizedBox(
-                        height: 30,
-                        child: Text(
-                          name,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            color: AppColors.navy,
-                            fontSize: 10,
-                            height: 1.2,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          }).toList(),
-        ),
+        ...rows,
       ],
     );
   }
@@ -759,12 +785,15 @@ class _ProductGrid extends StatelessWidget {
 
           return InkWell(
             borderRadius: AppRadii.cardBorder,
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => ProductDetailScreen(product: product),
-              ),
-            ),
+            onTap: () {
+              context.read<MarketProvider>().recordView(product);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ProductDetailScreen(product: product),
+                ),
+              );
+            },
             child: Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
@@ -918,6 +947,149 @@ class _ProductGrid extends StatelessWidget {
                                 ? () => provider.addToCart(product)
                                 : null,
                           ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+// ── Horizontal product row (Best sellers / Last seen) ─────────────────────
+
+class _HorizontalProductRow extends StatelessWidget {
+  const _HorizontalProductRow({
+    required this.products,
+    required this.provider,
+  });
+
+  final List<Product> products;
+  final MarketProvider provider;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 220,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: EdgeInsets.zero,
+        itemCount: products.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 10),
+        itemBuilder: (context, index) {
+          final product = products[index];
+          final cartQty = provider.cartQuantityFor(product.id);
+          final canAdd = product.inStock && cartQty < product.stockQuantity;
+          final hasDiscount = product.originalPrice != null &&
+              product.originalPrice! > product.price;
+
+          return GestureDetector(
+            onTap: () {
+              provider.recordView(product);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ProductDetailScreen(product: product),
+                ),
+              );
+            },
+            child: Container(
+              width: 140,
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: AppRadii.cardBorder,
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0x0D000000),
+                    blurRadius: 8,
+                    offset: Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Stack(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: SizedBox.expand(
+                            child: ProductImage(imageUrl: product.imageUrl),
+                          ),
+                        ),
+                        if (hasDiscount)
+                          Positioned(
+                            top: 4,
+                            left: 4,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 5,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.yellow,
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                '−${((1 - product.price / product.originalPrice!) * 100).round()}%',
+                                style: const TextStyle(
+                                  color: AppColors.navy,
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    product.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.navy,
+                      height: 1.25,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          '${product.price.toInt()} ₸',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.purple,
+                          ),
+                        ),
+                      ),
+                      if (canAdd)
+                        GestureDetector(
+                          onTap: () => provider.addToCart(product),
+                          child: Container(
+                            width: 26,
+                            height: 26,
+                            decoration: const BoxDecoration(
+                              color: AppColors.purple,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.add,
+                              color: Colors.white,
+                              size: 16,
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                 ],
               ),
