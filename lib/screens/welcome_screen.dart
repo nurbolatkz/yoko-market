@@ -57,10 +57,18 @@ class _WelcomeOverlayState extends State<WelcomeOverlay>
   }
 
   Future<void> _play() async {
-    await _drawCtrl.forward();
-    _textCtrl.forward();
-    await Future.delayed(const Duration(milliseconds: 400));
-    await _exitCtrl.forward();
+    // Safety: dismiss after 4 s even if animation stalls (low-end devices, emulators)
+    Future.delayed(const Duration(seconds: 4), () {
+      if (mounted) widget.onDone();
+    });
+    try {
+      await _drawCtrl.forward();
+      _textCtrl.forward();
+      await Future.delayed(const Duration(milliseconds: 400));
+      await _exitCtrl.forward();
+    } catch (_) {
+      return;
+    }
     if (mounted) widget.onDone();
   }
 
