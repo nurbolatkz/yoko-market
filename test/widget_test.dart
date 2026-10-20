@@ -164,6 +164,7 @@ Future<void> _pumpTestApp(WidgetTester tester) async {
   SharedPreferences.setMockInitialValues({});
   await tester.pumpWidget(
     YokoMarketApp(
+      welcomeShown: true,
       marketProvider: MarketProvider(
         catalogDataSource: _FakeCatalogDataSource(),
       ),

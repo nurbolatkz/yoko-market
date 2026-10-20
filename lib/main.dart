@@ -25,14 +25,33 @@ bool _isRunningUnderTest() {
   }
 }
 
-void main() {
-  runApp(const YokoMarketApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  // Read the pref before the first frame so _StartScreen never renders a blank
+  // loading scaffold — the decision is synchronous from the widget's perspective.
+  bool welcomeShown = false;
+  if (!_isRunningUnderTest()) {
+    try {
+      final prefs = await SharedPreferences.getInstance()
+          .timeout(const Duration(seconds: 2));
+      welcomeShown = prefs.getBool('welcome_shown') ?? false;
+      if (!welcomeShown) await prefs.setBool('welcome_shown', true);
+    } catch (_) {
+      welcomeShown = true; // on failure, skip the animation
+    }
+  }
+  runApp(YokoMarketApp(welcomeShown: welcomeShown));
 }
 
 class YokoMarketApp extends StatelessWidget {
-  const YokoMarketApp({super.key, this.marketProvider});
+  const YokoMarketApp({
+    super.key,
+    this.marketProvider,
+    this.welcomeShown = true,
+  });
 
   final MarketProvider? marketProvider;
+  final bool welcomeShown;
 
   @override
   Widget build(BuildContext context) {
@@ -60,67 +79,43 @@ class YokoMarketApp extends StatelessWidget {
         debugShowCheckedModeBanner: false,
         theme: AppTheme.light,
         themeMode: ThemeMode.light,
-        home: const _StartScreen(),
+        home: _StartScreen(welcomeShown: welcomeShown),
       ),
     );
   }
 }
 
-/// Checks SharedPreferences for `welcome_shown`, then either goes straight to
-/// [MainScreen] or shows [WelcomeOverlay] on top of it.
-///
-/// [MainScreen] is always in the tree so provider data loads in parallel with
-/// the animation — the welcome screen never blocks the API.
+/// Shows [WelcomeOverlay] on first launch; goes straight to [MainScreen]
+/// otherwise. [MainScreen] is always in the tree so API calls start
+/// immediately — the animation never delays data loading.
 class _StartScreen extends StatefulWidget {
-  const _StartScreen();
+  const _StartScreen({required this.welcomeShown});
+
+  final bool welcomeShown;
 
   @override
   State<_StartScreen> createState() => _StartScreenState();
 }
 
-enum _Start { loading, direct, welcome }
-
 class _StartScreenState extends State<_StartScreen> {
-  _Start _state = _Start.loading;
+  late bool _showOverlay;
 
   @override
   void initState() {
     super.initState();
-    _check();
-  }
-
-  Future<void> _check() async {
-    // Always skip the welcome screen in test environments so pumpAndSettle
-    // settles immediately and widget tests are not affected by animations.
-    if (_isRunningUnderTest()) {
-      if (mounted) setState(() => _state = _Start.direct);
-      return;
-    }
-    final prefs = await SharedPreferences.getInstance();
-    final shown = prefs.getBool('welcome_shown') ?? false;
-    if (!shown) await prefs.setBool('welcome_shown', true);
-    if (mounted) {
-      setState(() {
-        _state = shown ? _Start.direct : _Start.welcome;
-      });
-    }
+    _showOverlay = !widget.welcomeShown && !_isRunningUnderTest();
   }
 
   @override
   Widget build(BuildContext context) {
-    return switch (_state) {
-      _Start.loading => const Scaffold(
-          backgroundColor: AppColors.background,
+    if (!_showOverlay) return const MainScreen();
+    return Stack(
+      children: [
+        const MainScreen(),
+        WelcomeOverlay(
+          onDone: () => setState(() => _showOverlay = false),
         ),
-      _Start.direct => const MainScreen(),
-      _Start.welcome => Stack(
-          children: [
-            const MainScreen(),
-            WelcomeOverlay(
-              onDone: () => setState(() => _state = _Start.direct),
-            ),
-          ],
-        ),
-    };
+      ],
+    );
   }
 }
