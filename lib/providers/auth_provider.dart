@@ -69,6 +69,13 @@ class AuthProvider with ChangeNotifier {
     return newToken;
   }
 
+  Future<UserProfile> patchUser({String? fullName}) async {
+    final updated = await _auth.patchProfile(fullName: fullName);
+    _user = updated;
+    notifyListeners();
+    return updated;
+  }
+
   Future<int> requestOtp(String phone) => _auth.requestOtp(phone);
 
   Future<void> login(String phone, String code) async {

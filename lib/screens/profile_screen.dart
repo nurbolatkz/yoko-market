@@ -6,6 +6,7 @@ import '../providers/orders_provider.dart';
 import '../theme/app_theme.dart';
 import 'auth/phone_screen.dart';
 import 'orders_screen.dart';
+import 'personal_data_screen.dart';
 import 'support_screen.dart';
 import 'yocoin_history_screen.dart';
 
@@ -272,9 +273,13 @@ class _AuthenticatedViewState extends State<_AuthenticatedView> {
           subtitle: 'Развлечения и награды',
         ),
         const SizedBox(height: 8),
-        const _MenuItem(
-          title: 'Адреса и настройки',
-          subtitle: 'Личные данные и доставка',
+        _MenuItem(
+          title: 'Личные данные',
+          subtitle: 'Имя и контактная информация',
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const PersonalDataScreen()),
+          ),
         ),
         const SizedBox(height: 8),
         _MenuItem(
