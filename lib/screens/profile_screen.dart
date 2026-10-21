@@ -6,6 +6,7 @@ import '../providers/orders_provider.dart';
 import '../theme/app_theme.dart';
 import 'auth/phone_screen.dart';
 import 'orders_screen.dart';
+import 'support_screen.dart';
 import 'yocoin_history_screen.dart';
 
 // Profile screen uses a light-lavender tint (#F8F7FC) rather than the app's
@@ -274,6 +275,15 @@ class _AuthenticatedViewState extends State<_AuthenticatedView> {
         const _MenuItem(
           title: 'Адреса и настройки',
           subtitle: 'Личные данные и доставка',
+        ),
+        const SizedBox(height: 8),
+        _MenuItem(
+          title: 'Поддержка / FAQ',
+          subtitle: 'Вопросы, доставка, возврат',
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const SupportScreen()),
+          ),
         ),
       ],
     );

@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/market_provider.dart';
+import '../providers/wishlist_provider.dart';
 import '../theme/app_theme.dart';
 import 'catalog_screen.dart';
 import 'cart_screen.dart';
+import 'favorites_screen.dart';
 import 'product_catalog_screen.dart';
 import 'profile_screen.dart';
 
@@ -22,6 +24,7 @@ class _MainScreenState extends State<MainScreen> {
   Widget build(BuildContext context) {
     final marketProvider = Provider.of<MarketProvider>(context);
     final cartCount = marketProvider.cartItemCount;
+    final favCount = context.watch<WishlistProvider>().count;
     final screens = [
       CatalogScreen(
         onCategorySelected: (category) {
@@ -34,10 +37,7 @@ class _MainScreenState extends State<MainScreen> {
       ),
       const ProductCatalogScreen(),
       CartScreen(onGoToCatalog: () => setState(() => _currentIndex = 1)),
-      const _SimpleSection(
-        title: 'Избранное',
-        icon: Icons.favorite_border_rounded,
-      ),
+      const FavoritesScreen(),
       const ProfileScreen(),
     ];
 
@@ -76,9 +76,17 @@ class _MainScreenState extends State<MainScreen> {
               ),
               label: 'Корзина',
             ),
-            const NavigationDestination(
-              icon: Icon(Icons.favorite_border_rounded),
-              selectedIcon: Icon(Icons.favorite_rounded),
+            NavigationDestination(
+              icon: Badge(
+                isLabelVisible: favCount > 0,
+                label: Text('$favCount'),
+                child: const Icon(Icons.favorite_border_rounded),
+              ),
+              selectedIcon: Badge(
+                isLabelVisible: favCount > 0,
+                label: Text('$favCount'),
+                child: const Icon(Icons.favorite_rounded),
+              ),
               label: 'Избранное',
             ),
             const NavigationDestination(

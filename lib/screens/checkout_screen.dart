@@ -10,6 +10,7 @@ import '../providers/market_provider.dart';
 import '../services/checkout_api.dart';
 import '../theme/app_theme.dart';
 import 'order_confirmation_screen.dart';
+import 'yocoin_screen.dart';
 
 // Private sentinels used only for control-flow inside _onPlaceOrder.
 class _SessionExpiredError {}
@@ -449,6 +450,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               const _SectionLabel(title: 'Расчёт'),
               const SizedBox(height: 8),
               _SummaryCard(estimate: est),
+              const SizedBox(height: 8),
+              _YoCoinInfoLink(),
             ],
           ),
         ),
@@ -1273,6 +1276,42 @@ class _StockErrorView extends StatelessWidget {
               onPressed: onBack,
               icon: const Icon(Icons.arrow_back_rounded),
               label: const Text('Вернуться в корзину'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── YoCoin info link ──────────────────────────────────────────────────────────
+
+class _YoCoinInfoLink extends StatelessWidget {
+  const _YoCoinInfoLink();
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const YoCoinScreen()),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: const [
+            Icon(Icons.info_outline_rounded, size: 14, color: AppColors.purple),
+            SizedBox(width: 4),
+            Text(
+              'О YoCoin и уровнях лояльности',
+              style: TextStyle(
+                color: AppColors.purple,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                decoration: TextDecoration.underline,
+                decorationColor: AppColors.purple,
+              ),
             ),
           ],
         ),
