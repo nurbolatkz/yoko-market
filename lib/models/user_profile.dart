@@ -31,4 +31,15 @@ class UserProfile {
   );
 
   String get displayName => fullName?.isNotEmpty == true ? fullName! : phone;
+
+  UserProfile copyWith({String? fullName}) => UserProfile(
+        id: id,
+        phone: phone,
+        fullName: fullName ?? this.fullName,
+        address: address,
+        bonusBalance: bonusBalance,
+        loyaltyTier: loyaltyTier,
+        loyaltyTierLabel: loyaltyTierLabel,
+        isRegistered: isRegistered,
+      );
 }

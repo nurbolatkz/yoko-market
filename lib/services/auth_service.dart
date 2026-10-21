@@ -91,6 +91,17 @@ class AuthService {
     }
   }
 
+  Future<UserProfile> patchProfile({String? fullName}) async {
+    final token = await _storage.read(key: _accessKey);
+    if (token == null) throw Exception('no_token');
+    final resp = await _dio.patch<dynamic>(
+      '/profile',
+      data: {if (fullName != null) 'full_name': fullName},
+      options: Options(headers: {'Authorization': 'Bearer $token'}),
+    );
+    return UserProfile.fromJson(resp.data as Map<String, dynamic>);
+  }
+
   Future<UserProfile?> getProfile() async {
     final token = await _storage.read(key: _accessKey);
     if (token == null) return null;
