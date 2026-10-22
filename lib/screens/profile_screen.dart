@@ -7,6 +7,7 @@ import '../providers/orders_provider.dart';
 import '../theme/app_theme.dart';
 import 'addresses_screen.dart';
 import 'auth/phone_screen.dart';
+import 'delivery_info_screen.dart';
 import 'invite_screen.dart';
 import 'orders_screen.dart';
 import 'settings_screen.dart';
@@ -287,6 +288,15 @@ class _AuthenticatedViewState extends State<_AuthenticatedView> {
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(builder: (_) => const AddressesScreen()),
+          ),
+        ),
+        const SizedBox(height: 8),
+        _MenuItem(
+          title: 'Доставка и оплата',
+          subtitle: 'Условия, города, способы оплаты',
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const DeliveryInfoScreen()),
           ),
         ),
         const SizedBox(height: 8),
