@@ -11,6 +11,7 @@ import '../providers/auth_provider.dart';
 import '../providers/market_provider.dart';
 import '../services/checkout_api.dart';
 import '../theme/app_theme.dart';
+import 'delivery_info_screen.dart';
 import 'order_confirmation_screen.dart';
 import 'yocoin_screen.dart';
 
@@ -496,7 +497,29 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               const SizedBox(height: 8),
               _ItemsCard(items: est.items),
               const SizedBox(height: 20),
-              const _SectionLabel(title: 'Доставка'),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                children: [
+                  const _SectionLabel(title: 'Доставка'),
+                  const Spacer(),
+                  GestureDetector(
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => const DeliveryInfoScreen()),
+                    ),
+                    child: const Text(
+                      'Условия →',
+                      style: TextStyle(
+                        color: AppColors.purple,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
               const SizedBox(height: 8),
               _DeliveryCard(
                 phone: phone,
