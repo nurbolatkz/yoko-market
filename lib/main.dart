@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'config/app_config.dart';
+import 'providers/address_provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/market_provider.dart';
 import 'providers/orders_provider.dart';
@@ -73,6 +74,23 @@ class YokoMarketApp extends StatelessWidget {
         ),
         ChangeNotifierProvider<OrdersProvider>(
           create: (_) => OrdersProvider(),
+        ),
+        // AddressProvider loads saved addresses when authenticated, clears on logout.
+        ChangeNotifierProxyProvider<AuthProvider, AddressProvider>(
+          create: (_) => AddressProvider(),
+          update: (_, auth, addresses) {
+            addresses ??= AddressProvider();
+            if (auth.isAuthenticated) {
+              auth.getAccessToken().then((token) {
+                if (token != null && !addresses!.isLoaded) {
+                  addresses.load(token);
+                }
+              });
+            } else if (auth.state == AuthState.guest) {
+              addresses.clear();
+            }
+            return addresses;
+          },
         ),
         // WishlistProvider syncs with backend when auth state changes.
         ChangeNotifierProxyProvider<AuthProvider, WishlistProvider>(

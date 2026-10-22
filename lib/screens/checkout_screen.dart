@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../models/checkout_estimate.dart';
+import '../models/user_address.dart';
+import '../providers/address_provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/market_provider.dart';
 import '../services/checkout_api.dart';
@@ -112,8 +114,18 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   @override
   void initState() {
     super.initState();
-    // Pre-fill with saved profile address; user can restructure it via the form.
-    _street = context.read<AuthProvider>().user?.address ?? '';
+    // Pre-fill from saved default address if available; fall back to legacy profile field.
+    final savedDefault = context.read<AddressProvider>().defaultAddress;
+    if (savedDefault != null) {
+      _cityCode = savedDefault.cityCode;
+      _cityName = savedDefault.cityName;
+      _street = savedDefault.street;
+      _house = savedDefault.house;
+      _aptOffice = savedDefault.aptOffice;
+      _comment = savedDefault.comment;
+    } else {
+      _street = context.read<AuthProvider>().user?.address ?? '';
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadCities();
       _runEstimate();
@@ -242,6 +254,28 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       _house = result.house;
       _aptOffice = result.aptOffice;
       _comment = result.comment;
+      _estimate = null;
+    });
+    _runEstimate();
+  }
+
+  Future<void> _onSelectSavedAddress() async {
+    final addresses = context.read<AddressProvider>().addresses;
+    if (addresses.isEmpty) return;
+    final selected = await showModalBottomSheet<UserAddress>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _SavedAddressPicker(addresses: addresses),
+    );
+    if (!mounted || selected == null) return;
+    setState(() {
+      _cityCode = selected.cityCode;
+      _cityName = selected.cityName;
+      _street = selected.street;
+      _house = selected.house;
+      _aptOffice = selected.aptOffice;
+      _comment = selected.comment;
       _estimate = null;
     });
     _runEstimate();
@@ -445,6 +479,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 address: _assembledAddress,
                 onEditAddress: _onOpenAddressSheet,
                 citiesLoading: _citiesLoading,
+                onSelectSaved: context.read<AddressProvider>().addresses.isNotEmpty
+                    ? _onSelectSavedAddress
+                    : null,
               ),
               const SizedBox(height: 20),
               const _SectionLabel(title: 'Расчёт'),
@@ -572,12 +609,14 @@ class _DeliveryCard extends StatelessWidget {
     required this.address,
     required this.onEditAddress,
     required this.citiesLoading,
+    this.onSelectSaved,
   });
 
   final String phone;
   final String address;
   final VoidCallback onEditAddress;
   final bool citiesLoading;
+  final VoidCallback? onSelectSaved;
 
   @override
   Widget build(BuildContext context) {
@@ -615,8 +654,9 @@ class _DeliveryCard extends StatelessWidget {
           // Address — tappable, opens structured form
           InkWell(
             onTap: onEditAddress,
-            borderRadius: const BorderRadius.vertical(
-                bottom: Radius.circular(12)),
+            borderRadius: onSelectSaved != null
+                ? BorderRadius.zero
+                : const BorderRadius.vertical(bottom: Radius.circular(12)),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               child: Row(
@@ -664,6 +704,30 @@ class _DeliveryCard extends StatelessWidget {
               ),
             ),
           ),
+          if (onSelectSaved != null) ...[
+            const Divider(height: 1, indent: 16, endIndent: 16, color: AppColors.border),
+            InkWell(
+              onTap: onSelectSaved,
+              borderRadius: const BorderRadius.vertical(bottom: Radius.circular(12)),
+              child: const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: Row(
+                  children: [
+                    Icon(Icons.bookmarks_outlined, size: 16, color: AppColors.purple),
+                    SizedBox(width: 8),
+                    Text(
+                      'Выбрать из сохранённых',
+                      style: TextStyle(
+                        color: AppColors.purple,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -1315,6 +1379,110 @@ class _YoCoinInfoLink extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ── Saved address picker ───────────────────────────────────────────────────────
+
+class _SavedAddressPicker extends StatelessWidget {
+  const _SavedAddressPicker({required this.addresses});
+  final List<UserAddress> addresses;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.6,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.symmetric(vertical: 12),
+              decoration: BoxDecoration(
+                color: AppColors.border,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const Padding(
+            padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
+            child: Text(
+              'Сохранённые адреса',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: AppColors.navy,
+              ),
+            ),
+          ),
+          const Divider(height: 1, color: AppColors.border),
+          Flexible(
+            child: ListView.separated(
+              shrinkWrap: true,
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              itemCount: addresses.length,
+              separatorBuilder: (_, __) => const Divider(
+                height: 1,
+                indent: 16,
+                endIndent: 16,
+                color: AppColors.border,
+              ),
+              itemBuilder: (_, i) {
+                final addr = addresses[i];
+                final text = addr.assembledText;
+                return ListTile(
+                  leading: Icon(
+                    addr.isDefault
+                        ? Icons.location_on_rounded
+                        : Icons.location_on_outlined,
+                    color: addr.isDefault
+                        ? AppColors.purple
+                        : AppColors.navyMuted,
+                    size: 20,
+                  ),
+                  title: Text(
+                    text.isEmpty ? 'Адрес не заполнен' : text,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: text.isEmpty ? AppColors.navyMuted : AppColors.navy,
+                    ),
+                  ),
+                  trailing: addr.isDefault
+                      ? Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppColors.purpleSoft,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: const Text(
+                            'Основной',
+                            style: TextStyle(
+                              color: AppColors.purple,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        )
+                      : null,
+                  onTap: () => Navigator.pop(context, addr),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 8),
+        ],
       ),
     );
   }

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../providers/address_provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/orders_provider.dart';
 import '../theme/app_theme.dart';
+import 'addresses_screen.dart';
 import 'auth/phone_screen.dart';
 import 'orders_screen.dart';
 import 'personal_data_screen.dart';
@@ -274,6 +276,15 @@ class _AuthenticatedViewState extends State<_AuthenticatedView> {
         ),
         const SizedBox(height: 8),
         _MenuItem(
+          title: 'Мои адреса',
+          subtitle: 'Адреса доставки',
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const AddressesScreen()),
+          ),
+        ),
+        const SizedBox(height: 8),
+        _MenuItem(
           title: 'Личные данные',
           subtitle: 'Имя и контактная информация',
           onTap: () => Navigator.push(
@@ -307,6 +318,7 @@ class _AuthenticatedViewState extends State<_AuthenticatedView> {
           FilledButton(
             onPressed: () {
               ctx.read<OrdersProvider>().clearOrders();
+              ctx.read<AddressProvider>().clear();
               auth.logout();
               Navigator.pop(ctx);
             },
