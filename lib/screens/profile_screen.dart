@@ -9,6 +9,7 @@ import 'addresses_screen.dart';
 import 'auth/phone_screen.dart';
 import 'invite_screen.dart';
 import 'orders_screen.dart';
+import 'settings_screen.dart';
 import 'personal_data_screen.dart';
 import 'support_screen.dart';
 import 'yocoin_history_screen.dart';
@@ -304,6 +305,15 @@ class _AuthenticatedViewState extends State<_AuthenticatedView> {
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(builder: (_) => const SupportScreen()),
+          ),
+        ),
+        const SizedBox(height: 8),
+        _MenuItem(
+          title: 'Настройки',
+          subtitle: 'Версия, политика, выход',
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const SettingsScreen()),
           ),
         ),
       ],
