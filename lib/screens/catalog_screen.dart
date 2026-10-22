@@ -44,76 +44,96 @@ class _CatalogScreenState extends State<CatalogScreen> {
     final cartCount = provider.cartItemCount;
     final cartTotal = provider.cartTotalAmount;
 
+    final isInitialLoad = provider.catalogLoading && provider.categories.isEmpty;
+    final hasError = !provider.catalogLoading && provider.catalogError != null && provider.categories.isEmpty;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
         bottom: false,
         child: Stack(
           children: [
-            CustomScrollView(
-              key: const Key('home-scroll'),
-              slivers: [
-                SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-                  sliver: SliverList.list(
-                    children: [
-                      const _Header(),
-                      const SizedBox(height: 12),
-                      _SearchBar(
-                        controller: _searchCtrl,
-                        onSubmitted: (value) {
-                          provider.setSearchQuery(value);
-                          provider.loadProducts();
-                          widget.onSearchSubmitted();
-                        },
-                      ),
-                      const SizedBox(height: 18),
-                      if (provider.banners.isNotEmpty) ...[
-                        _BannerCarousel(banners: provider.banners),
-                        const SizedBox(height: 24),
-                      ],
-                      _Categories(
-                        categories: provider.categories,
-                        onSelected: widget.onCategorySelected,
-                        onSeeAll: () => widget.onCategorySelected('All'),
-                      ),
-                      if (provider.featuredProducts.isNotEmpty) ...[
+            if (isInitialLoad)
+              _HomeSkeleton(cartCount: cartCount)
+            else if (hasError)
+              _HomeErrorView(
+                message: provider.catalogError!,
+                onRetry: () => provider.retryAll(),
+              )
+            else
+              CustomScrollView(
+                key: const Key('home-scroll'),
+                slivers: [
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+                    sliver: SliverList.list(
+                      children: [
+                        const _Header(),
+                        const SizedBox(height: 12),
+                        _SearchBar(
+                          controller: _searchCtrl,
+                          onSubmitted: (value) {
+                            provider.setSearchQuery(value);
+                            provider.loadProducts();
+                            widget.onSearchSubmitted();
+                          },
+                        ),
+                        const SizedBox(height: 18),
+                        if (provider.bannersLoading)
+                          const _SkeletonBox(height: 160, radius: 16)
+                        else if (provider.banners.isNotEmpty) ...[
+                          _BannerCarousel(banners: provider.banners),
+                          const SizedBox(height: 24),
+                        ],
+                        _Categories(
+                          categories: provider.categories,
+                          onSelected: widget.onCategorySelected,
+                          onSeeAll: () => widget.onCategorySelected('All'),
+                        ),
+                        if (provider.featuredLoading)
+                          ...[
+                            const SizedBox(height: 28),
+                            const _SkeletonBox(height: 18, width: 160, radius: 6),
+                            const SizedBox(height: 14),
+                            const _SkeletonHorizontalRow(),
+                          ]
+                        else if (provider.featuredProducts.isNotEmpty) ...[
+                          const SizedBox(height: 28),
+                          _SectionHeader(
+                            title: 'Лучшие предложения',
+                            onSeeAll: () => widget.onCategorySelected('All'),
+                          ),
+                          const SizedBox(height: 14),
+                          _HorizontalProductRow(
+                            products: provider.featuredProducts,
+                            provider: provider,
+                          ),
+                        ],
+                        if (provider.lastSeenProducts.isNotEmpty) ...[
+                          const SizedBox(height: 28),
+                          const _SectionHeader(title: 'Недавно просмотренные'),
+                          const SizedBox(height: 14),
+                          _HorizontalProductRow(
+                            products: provider.lastSeenProducts,
+                            provider: provider,
+                          ),
+                        ],
                         const SizedBox(height: 28),
                         _SectionHeader(
-                          title: 'Лучшие предложения',
+                          title: 'Популярные товары',
                           onSeeAll: () => widget.onCategorySelected('All'),
                         ),
                         const SizedBox(height: 14),
-                        _HorizontalProductRow(
-                          products: provider.featuredProducts,
-                          provider: provider,
-                        ),
                       ],
-                      if (provider.lastSeenProducts.isNotEmpty) ...[
-                        const SizedBox(height: 28),
-                        const _SectionHeader(title: 'Недавно просмотренные'),
-                        const SizedBox(height: 14),
-                        _HorizontalProductRow(
-                          products: provider.lastSeenProducts,
-                          provider: provider,
-                        ),
-                      ],
-                      const SizedBox(height: 28),
-                      _SectionHeader(
-                        title: 'Популярные товары',
-                        onSeeAll: () => widget.onCategorySelected('All'),
-                      ),
-                      const SizedBox(height: 14),
-                    ],
+                    ),
                   ),
-                ),
-                _ProductGrid(provider: provider),
-                SliverToBoxAdapter(
-                  child: SizedBox(height: cartCount > 0 ? 120 : 96),
-                ),
-              ],
-            ),
-            if (cartCount > 0)
+                  _ProductGrid(provider: provider),
+                  SliverToBoxAdapter(
+                    child: SizedBox(height: cartCount > 0 ? 120 : 96),
+                  ),
+                ],
+              ),
+            if (!isInitialLoad && !hasError && cartCount > 0)
               Positioned(
                 bottom: 0,
                 left: 0,
@@ -124,6 +144,184 @@ class _CatalogScreenState extends State<CatalogScreen> {
                   onTap: widget.onCartTapped,
                 ),
               ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Skeleton / Error states ──────────────────────────────────────────────
+
+class _SkeletonBox extends StatelessWidget {
+  const _SkeletonBox({
+    required this.height,
+    this.width,
+    this.radius = 12,
+  });
+
+  final double height;
+  final double? width;
+  final double radius;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: height,
+      width: width,
+      decoration: BoxDecoration(
+        color: const Color(0xFFE8E6E1),
+        borderRadius: BorderRadius.circular(radius),
+      ),
+    );
+  }
+}
+
+class _SkeletonHorizontalRow extends StatelessWidget {
+  const _SkeletonHorizontalRow();
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 220,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: 4,
+        separatorBuilder: (_, index) => const SizedBox(width: 10),
+        itemBuilder: (_, index) => const _SkeletonBox(height: 220, width: 140),
+      ),
+    );
+  }
+}
+
+class _SkeletonProductGrid extends StatelessWidget {
+  const _SkeletonProductGrid();
+
+  @override
+  Widget build(BuildContext context) {
+    return SliverPadding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      sliver: SliverGrid.builder(
+        itemCount: 4,
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          childAspectRatio: 0.62,
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
+        ),
+        itemBuilder: (_, index) => const _SkeletonBox(height: double.infinity, radius: 16),
+      ),
+    );
+  }
+}
+
+class _HomeSkeleton extends StatelessWidget {
+  const _HomeSkeleton({required this.cartCount});
+
+  final int cartCount;
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomScrollView(
+      physics: const NeverScrollableScrollPhysics(),
+      slivers: [
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+          sliver: SliverList.list(
+            children: [
+              const _Header(),
+              const SizedBox(height: 12),
+              const _SkeletonBox(height: 48, radius: 14),
+              const SizedBox(height: 18),
+              const _SkeletonBox(height: 160, radius: 16),
+              const SizedBox(height: 24),
+              Row(
+                children: List.generate(
+                  5,
+                  (i) => Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 3),
+                      child: Column(
+                        children: [
+                          const AspectRatio(
+                            aspectRatio: 1,
+                            child: _SkeletonBox(height: double.infinity, radius: 16),
+                          ),
+                          const SizedBox(height: 6),
+                          Container(
+                            height: 12,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFE8E6E1),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 28),
+              const _SkeletonBox(height: 18, width: 160, radius: 6),
+              const SizedBox(height: 14),
+              const _SkeletonHorizontalRow(),
+              const SizedBox(height: 28),
+              const _SkeletonBox(height: 18, width: 180, radius: 6),
+              const SizedBox(height: 14),
+            ],
+          ),
+        ),
+        const _SkeletonProductGrid(),
+        SliverToBoxAdapter(
+          child: SizedBox(height: cartCount > 0 ? 120 : 96),
+        ),
+      ],
+    );
+  }
+}
+
+class _HomeErrorView extends StatelessWidget {
+  const _HomeErrorView({required this.message, required this.onRetry});
+
+  final String message;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.wifi_off_rounded,
+              size: 56,
+              color: AppColors.navyMuted,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: AppColors.navy,
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 20),
+            FilledButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh_rounded, size: 18),
+              label: const Text('Повторить'),
+              style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -1010,7 +1208,7 @@ class _HorizontalProductRow extends StatelessWidget {
         scrollDirection: Axis.horizontal,
         padding: EdgeInsets.zero,
         itemCount: products.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 10),
+        separatorBuilder: (_, index) => const SizedBox(width: 10),
         itemBuilder: (context, index) {
           final product = products[index];
           final cartQty = provider.cartQuantityFor(product.id);

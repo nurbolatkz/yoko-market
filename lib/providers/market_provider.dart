@@ -239,6 +239,10 @@ class MarketProvider with ChangeNotifier {
     await loadProducts();
   }
 
+  Future<void> retryAll() async {
+    await Future.wait([loadCatalog(), loadFeatured(), loadBanners()]);
+  }
+
   // ── Cart ──────────────────────────────────────────────────────────────────
 
   final Map<String, CartItem> _cartItems = {};
