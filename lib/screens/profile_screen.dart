@@ -7,6 +7,7 @@ import '../providers/orders_provider.dart';
 import '../theme/app_theme.dart';
 import 'addresses_screen.dart';
 import 'auth/phone_screen.dart';
+import 'invite_screen.dart';
 import 'orders_screen.dart';
 import 'personal_data_screen.dart';
 import 'support_screen.dart';
@@ -265,9 +266,13 @@ class _AuthenticatedViewState extends State<_AuthenticatedView> {
           ),
         ),
         const SizedBox(height: 8),
-        const _MenuItem(
+        _MenuItem(
           title: 'Пригласить друга',
           subtitle: 'Код и условия приглашения',
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const InviteScreen()),
+          ),
         ),
         const SizedBox(height: 8),
         const _MenuItem(
