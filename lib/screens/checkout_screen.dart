@@ -62,6 +62,24 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   // One UUID per checkout attempt. Kept across 401/timeout retries.
   String? _idempotencyKey;
 
+  // ── Bonus state ──────────────────────────────────────────────────────────────
+
+  bool _useBonus = false;
+
+  int get _bonusBalance =>
+      context.read<AuthProvider>().user?.bonusBalance ?? 0;
+
+  void _onToggleBonus(bool value) {
+    setState(() {
+      _useBonus = value;
+      _estimate = null;
+      // Changing bonus_used alters the idempotency hash — reset so a new key
+      // is generated if the user proceeds to place the order.
+      _idempotencyKey = null;
+    });
+    _runEstimate();
+  }
+
   // ── Address state ────────────────────────────────────────────────────────────
 
   String _cityCode = '';
@@ -182,6 +200,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         token: token,
         items: items,
         address: addr.isEmpty ? null : addr,
+        bonusUsed: _useBonus ? _bonusBalance : 0,
       );
 
       if (!mounted || version != _requestVersion) return;
@@ -296,10 +315,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     final items = marketProvider.cartItems;
     final snapshot =
         items.map((ci) => MapEntry(ci.product.id, ci.quantity)).toList();
-    // Snapshot address at place-time — stored with the order regardless of
-    // future profile address changes.
+    // Snapshot address and bonus at place-time so retries are idempotent.
+    // Using bonusApplied (server-confirmed) rather than _bonusBalance ensures
+    // the request hash is stable across retries even if the balance changed.
     final address = _assembledAddress;
     final confirmedTotal = _estimate!.orderTotal;
+    final bonusToApply = _estimate!.bonusApplied;
 
     try {
       String? token = await authProvider.getAccessToken();
@@ -318,6 +339,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           address: address,
           idempotencyKey: idemKey,
           confirmedTotal: confirmedTotal,
+          bonusUsed: bonusToApply,
         );
       } on DioException catch (e) {
         if (!mounted) return;
@@ -331,6 +353,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             address: address,
             idempotencyKey: idemKey,
             confirmedTotal: confirmedTotal,
+            bonusUsed: bonusToApply,
           );
         } else if (_isStockError(_detail(e))) {
           throw _StockChangedError(_detail(e) ?? '');
@@ -432,7 +455,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final phone = context.watch<AuthProvider>().user?.phone ?? '';
+    final auth = context.watch<AuthProvider>();
+    final phone = auth.user?.phone ?? '';
     return Scaffold(
       appBar: AppBar(
         title: const Text(
@@ -484,11 +508,18 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     : null,
               ),
               const SizedBox(height: 20),
+              const _SectionLabel(title: 'YoCoin'),
+              const SizedBox(height: 8),
+              _YoCoinCard(
+                bonusBalance: _bonusBalance,
+                useBonus: _useBonus,
+                onToggle: _onToggleBonus,
+                bonusApplied: est.bonusApplied,
+              ),
+              const SizedBox(height: 20),
               const _SectionLabel(title: 'Расчёт'),
               const SizedBox(height: 8),
               _SummaryCard(estimate: est),
-              const SizedBox(height: 8),
-              _YoCoinInfoLink(),
             ],
           ),
         ),
@@ -1348,37 +1379,143 @@ class _StockErrorView extends StatelessWidget {
   }
 }
 
-// ── YoCoin info link ──────────────────────────────────────────────────────────
+// ── YoCoin card ───────────────────────────────────────────────────────────────
 
-class _YoCoinInfoLink extends StatelessWidget {
-  const _YoCoinInfoLink();
+class _YoCoinCard extends StatelessWidget {
+  const _YoCoinCard({
+    required this.bonusBalance,
+    required this.useBonus,
+    required this.onToggle,
+    required this.bonusApplied,
+  });
+
+  final int bonusBalance;
+  final bool useBonus;
+  final ValueChanged<bool> onToggle;
+  final int bonusApplied;
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const YoCoinScreen()),
+    final hasBalance = bonusBalance > 0;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: AppRadii.cardBorder,
+        border: Border.all(
+          color: useBonus && hasBalance ? AppColors.purple : AppColors.border,
+          width: useBonus && hasBalance ? 1.5 : 1.0,
+        ),
       ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: const [
-            Icon(Icons.info_outline_rounded, size: 14, color: AppColors.purple),
-            SizedBox(width: 4),
-            Text(
-              'О YoCoin и уровнях лояльности',
-              style: TextStyle(
-                color: AppColors.purple,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                decoration: TextDecoration.underline,
-                decorationColor: AppColors.purple,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header row: icon + label + balance chip
+          Padding(
+            padding: EdgeInsets.fromLTRB(16, 12, 16, hasBalance ? 0 : 10),
+            child: Row(
+              children: [
+                const Icon(Icons.toll_rounded,
+                    size: 18, color: AppColors.purple),
+                const SizedBox(width: 8),
+                const Text(
+                  'YoCoin',
+                  style: TextStyle(
+                    color: AppColors.navy,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const Spacer(),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: hasBalance
+                        ? AppColors.purpleSoft
+                        : const Color(0xFFF2F2F5),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    '${_fmt(bonusBalance)} ₸',
+                    style: TextStyle(
+                      color: hasBalance
+                          ? AppColors.purple
+                          : AppColors.navyMuted,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          if (!hasBalance) ...[
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 0, 16, 4),
+              child: Text(
+                'Бонусов пока нет — зарабатывайте за каждый заказ',
+                style: TextStyle(color: AppColors.navyMuted, fontSize: 13),
               ),
             ),
+          ] else ...[
+            SwitchListTile(
+              value: useBonus,
+              onChanged: onToggle,
+              title: const Text(
+                'Использовать YoCoin',
+                style: TextStyle(
+                  color: AppColors.navy,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              subtitle: useBonus && bonusApplied > 0
+                  ? Text(
+                      'Спишется ${_fmt(bonusApplied)} ₸',
+                      style: const TextStyle(
+                          color: AppColors.purple,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500),
+                    )
+                  : null,
+              activeThumbColor: AppColors.purple,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+              visualDensity: VisualDensity.compact,
+            ),
           ],
-        ),
+
+          const Divider(height: 1, color: AppColors.border),
+          // "Как это работает" link
+          InkWell(
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const YoCoinScreen()),
+            ),
+            borderRadius:
+                const BorderRadius.vertical(bottom: Radius.circular(12)),
+            child: const Padding(
+              padding: EdgeInsets.fromLTRB(16, 9, 16, 9),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.info_outline_rounded,
+                      size: 14, color: AppColors.purple),
+                  SizedBox(width: 4),
+                  Text(
+                    'Как это работает',
+                    style: TextStyle(
+                      color: AppColors.purple,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1432,7 +1569,7 @@ class _SavedAddressPicker extends StatelessWidget {
               shrinkWrap: true,
               padding: const EdgeInsets.symmetric(vertical: 8),
               itemCount: addresses.length,
-              separatorBuilder: (_, __) => const Divider(
+              separatorBuilder: (_, _) => const Divider(
                 height: 1,
                 indent: 16,
                 endIndent: 16,

@@ -34,6 +34,7 @@ class CheckoutApi {
     String? address,
     String? idempotencyKey,
     int? confirmedTotal,
+    int bonusUsed = 0,
   }) async {
     final body = <String, dynamic>{
       'items': items
@@ -47,6 +48,7 @@ class CheckoutApi {
       if (address != null && address.isNotEmpty) 'address': address,
       // ignore: use_null_aware_elements
       if (confirmedTotal != null) 'confirmed_total': confirmedTotal,
+      if (bonusUsed > 0) 'bonus_used': bonusUsed,
     };
 
     final headers = <String, dynamic>{'Authorization': 'Bearer $token'};
@@ -88,6 +90,7 @@ class CheckoutApi {
     required String token,
     required List<CartItem> items,
     String? address,
+    int bonusUsed = 0,
   }) async {
     final body = <String, dynamic>{
       'items': items
@@ -99,6 +102,7 @@ class CheckoutApi {
               })
           .toList(),
       if (address != null && address.isNotEmpty) 'address': address,
+      if (bonusUsed > 0) 'bonus_used': bonusUsed,
     };
 
     final resp = await _dio.post<dynamic>(
