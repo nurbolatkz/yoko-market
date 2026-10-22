@@ -1,6 +1,5 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../config/app_config.dart';
 import '../theme/app_theme.dart';
@@ -58,20 +57,6 @@ class _DeliveryInfoScreenState extends State<DeliveryInfoScreen> {
     }
   }
 
-  Future<void> _openUrl(String rawUrl) async {
-    final uri = Uri.tryParse(rawUrl);
-    if (uri == null) return;
-    try {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Не удалось открыть ссылку')),
-        );
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -103,24 +88,28 @@ class _DeliveryInfoScreenState extends State<DeliveryInfoScreen> {
         _SectionHeader('Доставка'),
         const SizedBox(height: 8),
         _InfoCard(
-          icon: Icons.local_shipping_outlined,
+          icon: Icons.location_city_outlined,
           iconColor: AppColors.purple,
-          title: 'Города доставки',
+          title: 'Города, доступные для заказа',
           children: info.cities.isEmpty
               ? [
                   const _InfoRow(
-                    text: 'Список городов временно недоступен.',
+                    text: 'Список доступных городов временно недоступен.',
                   ),
                 ]
-              : info.cities
-                  .map((c) => _InfoRow(text: c.name))
-                  .toList(),
+              : [
+                  ...info.cities.map((c) => _InfoRow(text: c.name)),
+                  const _InfoRow(
+                    text:
+                        'Точная зона доставки подтверждается при выборе адреса в оформлении заказа.',
+                  ),
+                ],
         ),
         const SizedBox(height: 10),
         _InfoCard(
           icon: Icons.discount_outlined,
           iconColor: const Color(0xFF23804A),
-          title: 'Условия бесплатной доставки',
+          title: 'Условия доставки',
           children: [
             if (info.freeDeliveryThreshold == 0)
               const _InfoRow(text: 'Доставка бесплатна для всех заказов.')
@@ -131,7 +120,7 @@ class _DeliveryInfoScreenState extends State<DeliveryInfoScreen> {
               ),
               const _InfoRow(
                 text:
-                    'Точная стоимость доставки рассчитывается при оформлении заказа — она зависит от адреса и состава корзины.',
+                    'Итоговая стоимость рассчитывается при оформлении заказа.',
               ),
             ],
           ],
@@ -143,7 +132,7 @@ class _DeliveryInfoScreenState extends State<DeliveryInfoScreen> {
         const SizedBox(height: 8),
         for (final pm in info.paymentMethods) ...[
           if (pm.code == 'kaspi')
-            _KaspiCard(url: pm.url, onOpen: () => _openUrl(pm.url))
+            const _KaspiCard()
           else
             _InfoCard(
               icon: Icons.payment_outlined,
@@ -277,73 +266,58 @@ class _InfoRow extends StatelessWidget {
 // ── Kaspi Pay card ─────────────────────────────────────────────────────────────
 
 class _KaspiCard extends StatelessWidget {
-  const _KaspiCard({required this.url, required this.onOpen});
-  final String url;
-  final VoidCallback onOpen;
+  const _KaspiCard();
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.surface,
-      borderRadius: AppRadii.cardBorder,
-      child: InkWell(
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
         borderRadius: AppRadii.cardBorder,
-        onTap: onOpen,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          decoration: BoxDecoration(
-            borderRadius: AppRadii.cardBorder,
-            border: Border.all(color: AppColors.border),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: const Color(0xFFF5122D).withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(
+              Icons.credit_card_rounded,
+              size: 20,
+              color: Color(0xFFF5122D),
+            ),
           ),
-          child: Row(
-            children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF5122D).withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(10),
+          const SizedBox(width: 12),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Kaspi Pay',
+                  style: TextStyle(
+                    color: AppColors.navy,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
-                child: const Icon(
-                  Icons.credit_card_rounded,
-                  size: 20,
-                  color: Color(0xFFF5122D),
+                SizedBox(height: 2),
+                Text(
+                  'После оформления заказа менеджер отправит ссылку для оплаты в Telegram',
+                  style: TextStyle(
+                    color: AppColors.navyMuted,
+                    fontSize: 12,
+                    height: 1.35,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Kaspi Pay',
-                      style: TextStyle(
-                        color: AppColors.navy,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    SizedBox(height: 2),
-                    Text(
-                      'Ссылка для оплаты придёт после подтверждения заказа',
-                      style: TextStyle(
-                        color: AppColors.navyMuted,
-                        fontSize: 12,
-                        height: 1.35,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              const Icon(
-                Icons.open_in_new_rounded,
-                size: 18,
-                color: AppColors.navyMuted,
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
