@@ -11,8 +11,8 @@ class AuthService {
     : _dio = dio ?? Dio(
         BaseOptions(
           baseUrl: AppConfig.apiBaseUrl,
-          connectTimeout: const Duration(seconds: 15),
-          receiveTimeout: const Duration(seconds: 15),
+          connectTimeout: const Duration(seconds: 8),
+          receiveTimeout: const Duration(seconds: 8),
           responseType: ResponseType.json,
         ),
       );
