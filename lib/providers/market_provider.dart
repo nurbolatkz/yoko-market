@@ -121,6 +121,9 @@ class MarketProvider with ChangeNotifier {
   Future<Map<String, dynamic>> getBannerById(String id) =>
       _catalogDataSource.getBannerById(id);
 
+  Future<({Product product, List<ProductVariant> variants})> getProductById(String id) =>
+      _catalogDataSource.getProductById(id);
+
   Future<void> loadBanners() async {
     _bannersLoading = true;
     notifyListeners();

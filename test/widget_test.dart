@@ -223,4 +223,12 @@ class _FakeCatalogDataSource implements CatalogDataSource {
       return categoryMatches && searchMatches;
     }).toList();
   }
+
+  @override
+  Future<({Product product, List<ProductVariant> variants})> getProductById(
+      String id) async {
+    final product = _products.firstWhere((p) => p.id == id,
+        orElse: () => throw Exception('not_found'));
+    return (product: product, variants: <ProductVariant>[]);
+  }
 }
