@@ -13,6 +13,7 @@ import '../services/checkout_api.dart';
 import '../theme/app_theme.dart';
 import 'delivery_info_screen.dart';
 import 'order_confirmation_screen.dart';
+import 'support_screen.dart';
 import 'yocoin_screen.dart';
 
 // Private sentinels used only for control-flow inside _onPlaceOrder.
@@ -50,6 +51,10 @@ class CheckoutScreen extends StatefulWidget {
 
 class _CheckoutScreenState extends State<CheckoutScreen> {
   final _api = CheckoutApi();
+
+  // ── Pre-launch gate ──────────────────────────────────────────────────────────
+
+  bool _ordersBlocked = false;
 
   // ── Estimate state ───────────────────────────────────────────────────────────
 
@@ -145,7 +150,16 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     } else {
       _street = context.read<AuthProvider>().user?.address ?? '';
     }
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final enabled = await _api.getOrdersEnabled();
+      if (!mounted) return;
+      if (!enabled) {
+        setState(() {
+          _ordersBlocked = true;
+          _loading = false;
+        });
+        return;
+      }
       _loadCities();
       _runEstimate();
     });
@@ -356,6 +370,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             confirmedTotal: confirmedTotal,
             bonusUsed: bonusToApply,
           );
+        } else if ((e.response?.statusCode ?? 0) == 503 &&
+            (e.response?.data as Map?)?['detail'] == 'b2c_orders_unavailable') {
+          if (mounted) setState(() => _ordersBlocked = true);
+          return;
         } else if (_isStockError(_detail(e))) {
           throw _StockChangedError(_detail(e) ?? '');
         } else {
@@ -473,6 +491,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 
   Widget _buildBody(BuildContext context, String phone) {
+    if (_ordersBlocked) return _buildOrdersBlockedView(context);
     if (_loading) return const Center(child: CircularProgressIndicator());
 
     if (_stockError != null) {
@@ -1317,6 +1336,55 @@ class _BottomBar extends StatelessWidget {
       ),
     );
   }
+}
+
+// ── Orders blocked view ────────────────────────────────────────────────────────
+
+Widget _buildOrdersBlockedView(BuildContext context) {
+  return Center(
+    child: Padding(
+      padding: const EdgeInsets.all(32),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.schedule_rounded, size: 56, color: AppColors.purple),
+          const SizedBox(height: 16),
+          Text(
+            'Приём заказов скоро откроется',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.navy,
+                ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Мы готовим сервис к запуску.\nСледите за обновлениями.',
+            textAlign: TextAlign.center,
+            style: Theme.of(context)
+                .textTheme
+                .bodyMedium
+                ?.copyWith(color: AppColors.navyMuted),
+          ),
+          const SizedBox(height: 24),
+          FilledButton.icon(
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const SupportScreen()),
+            ),
+            icon: const Icon(Icons.headset_mic_outlined, size: 18),
+            label: const Text('Поддержка'),
+            style: FilledButton.styleFrom(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 // ── Error views ────────────────────────────────────────────────────────────────
