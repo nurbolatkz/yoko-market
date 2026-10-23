@@ -87,60 +87,77 @@ class _DeliveryInfoScreenState extends State<DeliveryInfoScreen> {
         // ── Доставка ──────────────────────────────────────────────────────────
         _SectionHeader('Доставка'),
         const SizedBox(height: 8),
-        _InfoCard(
-          icon: Icons.location_city_outlined,
-          iconColor: AppColors.purple,
-          title: 'Города, доступные для заказа',
-          children: info.cities.isEmpty
-              ? [
-                  const _InfoRow(
-                    text: 'Список доступных городов временно недоступен.',
-                  ),
-                ]
-              : [
-                  ...info.cities.map((c) => _InfoRow(text: c.name)),
-                  const _InfoRow(
-                    text:
-                        'Точная зона доставки подтверждается при выборе адреса в оформлении заказа.',
-                  ),
-                ],
-        ),
-        const SizedBox(height: 10),
-        _InfoCard(
-          icon: Icons.discount_outlined,
-          iconColor: const Color(0xFF23804A),
-          title: 'Условия доставки',
-          children: [
-            if (info.freeDeliveryThreshold == 0)
-              const _InfoRow(text: 'Доставка бесплатна для всех заказов.')
-            else ...[
-              _InfoRow(
-                text:
-                    'Бесплатная доставка при заказе от ${_fmt(info.freeDeliveryThreshold)} ₸.',
-              ),
-              const _InfoRow(
-                text:
-                    'Итоговая стоимость рассчитывается при оформлении заказа.',
-              ),
+        if (!info.ordersEnabled)
+          const _InfoCard(
+            icon: Icons.schedule_outlined,
+            iconColor: AppColors.navyMuted,
+            title: 'Города и условия доставки будут доступны к запуску',
+            children: [],
+          )
+        else ...[
+          _InfoCard(
+            icon: Icons.location_city_outlined,
+            iconColor: AppColors.purple,
+            title: 'Города, доступные для заказа',
+            children: info.cities.isEmpty
+                ? [
+                    const _InfoRow(
+                      text: 'Список доступных городов временно недоступен.',
+                    ),
+                  ]
+                : [
+                    ...info.cities.map((c) => _InfoRow(text: c.name)),
+                    const _InfoRow(
+                      text:
+                          'Точная зона доставки подтверждается при выборе адреса в оформлении заказа.',
+                    ),
+                  ],
+          ),
+          const SizedBox(height: 10),
+          _InfoCard(
+            icon: Icons.discount_outlined,
+            iconColor: const Color(0xFF23804A),
+            title: 'Условия доставки',
+            children: [
+              if (info.freeDeliveryThreshold == 0)
+                const _InfoRow(text: 'Доставка бесплатна для всех заказов.')
+              else ...[
+                _InfoRow(
+                  text:
+                      'Бесплатная доставка при заказе от ${_fmt(info.freeDeliveryThreshold)} ₸.',
+                ),
+                const _InfoRow(
+                  text:
+                      'Итоговая стоимость рассчитывается при оформлении заказа.',
+                ),
+              ],
             ],
-          ],
-        ),
+          ),
+        ],
         const SizedBox(height: 20),
 
         // ── Оплата ────────────────────────────────────────────────────────────
         _SectionHeader('Оплата'),
         const SizedBox(height: 8),
-        for (final pm in info.paymentMethods) ...[
-          if (pm.code == 'kaspi')
-            const _KaspiCard()
-          else
-            _InfoCard(
-              icon: Icons.payment_outlined,
-              iconColor: AppColors.navy,
-              title: pm.name,
-              children: const [],
-            ),
-        ],
+        if (!info.ordersEnabled)
+          const _InfoCard(
+            icon: Icons.schedule_outlined,
+            iconColor: AppColors.navyMuted,
+            title: 'Способы оплаты будут доступны к запуску',
+            children: [],
+          )
+        else
+          for (final pm in info.paymentMethods) ...[
+            if (pm.code == 'kaspi')
+              const _KaspiCard()
+            else
+              _InfoCard(
+                icon: Icons.payment_outlined,
+                iconColor: AppColors.navy,
+                title: pm.name,
+                children: const [],
+              ),
+          ],
         const SizedBox(height: 20),
 
         // ── Поддержка ─────────────────────────────────────────────────────────
@@ -419,16 +436,19 @@ class _ErrorView extends StatelessWidget {
 
 class _DeliveryInfo {
   const _DeliveryInfo({
+    required this.ordersEnabled,
     required this.freeDeliveryThreshold,
     required this.cities,
     required this.paymentMethods,
   });
 
+  final bool ordersEnabled;
   final int freeDeliveryThreshold;
   final List<_City> cities;
   final List<_PaymentMethod> paymentMethods;
 
   factory _DeliveryInfo.fromJson(Map<String, dynamic> j) => _DeliveryInfo(
+        ordersEnabled: j['orders_enabled'] as bool? ?? true,
         freeDeliveryThreshold:
             (j['free_delivery_threshold'] as num?)?.toInt() ?? 0,
         cities: (j['cities'] as List<dynamic>? ?? [])
