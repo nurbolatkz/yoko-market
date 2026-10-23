@@ -7,6 +7,8 @@ class Product {
   final double price;
   final double? originalPrice;
   final String imageUrl;
+  final List<String> imageUrls;
+  final Map<String, dynamic> specs;
   final String category;
   final String packageInfo;
   final bool inStock;
@@ -20,12 +22,15 @@ class Product {
     required this.price,
     this.originalPrice,
     required this.imageUrl,
+    List<String>? imageUrls,
+    Map<String, dynamic>? specs,
     required this.category,
     required this.packageInfo,
     this.inStock = true,
     this.stockQuantity = 1,
     this.rating = 4.5,
-  });
+  })  : imageUrls = imageUrls ?? (imageUrl.isNotEmpty ? [imageUrl] : const []),
+        specs = specs ?? const {};
 
   Map<String, dynamic> toJson() => {
     'id': id,
@@ -64,13 +69,20 @@ class Product {
     );
     final basePrice = _asDouble(json['price']);
 
+    final imageUrls = _allImageUrls(json);
+    final heroUrl = _firstImageUrl(json) ?? '';
+
     return Product(
       id: '${json['id']}',
       title: json['name'] as String? ?? '',
       description: json['description'] as String? ?? '',
       price: salePrice ?? basePrice,
       originalPrice: (salePrice != null && salePrice < basePrice) ? basePrice : null,
-      imageUrl: _firstImageUrl(json) ?? '',
+      imageUrl: heroUrl,
+      imageUrls: imageUrls.isNotEmpty ? imageUrls : (heroUrl.isNotEmpty ? [heroUrl] : []),
+      specs: json['specs'] is Map<String, dynamic>
+          ? json['specs'] as Map<String, dynamic>
+          : const {},
       category: json['category'] as String? ?? '',
       packageInfo: json['size'] != null && json['size'] != 'ONE'
           ? '${json['size']}'
@@ -80,6 +92,17 @@ class Product {
       rating: _asDouble(json['rating']),
     );
   }
+}
+
+List<String> _allImageUrls(Map<String, dynamic> json) {
+  final result = <String>[];
+  if (json['images'] is List) {
+    for (final item in json['images'] as List) {
+      final url = _absoluteUrl(item is Map<String, dynamic> ? item['url'] : item);
+      if (url != null && !result.contains(url)) result.add(url);
+    }
+  }
+  return result;
 }
 
 String? _firstImageUrl(Map<String, dynamic> json) {

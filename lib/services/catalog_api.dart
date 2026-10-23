@@ -5,6 +5,40 @@ import '../models/banner_item.dart';
 import '../models/product.dart';
 import '../models/product_category.dart';
 
+class ProductVariant {
+  const ProductVariant({
+    required this.id,
+    required this.size,
+    required this.price,
+    this.originalPrice,
+    required this.stockQty,
+    this.heroUrl,
+  });
+
+  final String id;
+  final String size;
+  final double price;
+  final double? originalPrice;
+  final int stockQty;
+  final String? heroUrl;
+
+  bool get inStock => stockQty > 0;
+
+  factory ProductVariant.fromJson(Map<String, dynamic> j) {
+    final salePrice = _asNullableDouble(j['promo_price'] ?? j['sale_price']);
+    final basePrice = _asDouble(j['price']);
+    final rawUrl = j['hero_url'];
+    return ProductVariant(
+      id: '${j['id']}',
+      size: j['size'] as String? ?? 'ONE',
+      price: salePrice ?? basePrice,
+      originalPrice: (salePrice != null && salePrice < basePrice) ? basePrice : null,
+      stockQty: _asInt(j['stock_qty']),
+      heroUrl: rawUrl is String && rawUrl.isNotEmpty ? rawUrl : null,
+    );
+  }
+}
+
 abstract interface class CatalogDataSource {
   Future<List<ProductCategory>> getCategories();
 
@@ -18,6 +52,8 @@ abstract interface class CatalogDataSource {
   Future<List<BannerItem>> getBanners();
 
   Future<Map<String, dynamic>> getBannerById(String id);
+
+  Future<({Product product, List<ProductVariant> variants})> getProductById(String id);
 }
 
 class CatalogApi implements CatalogDataSource {
@@ -82,9 +118,37 @@ class CatalogApi implements CatalogDataSource {
     }
     throw Exception('unexpected_response');
   }
+
+  @override
+  Future<({Product product, List<ProductVariant> variants})> getProductById(String id) async {
+    final response = await _dio.get<dynamic>('/products/$id');
+    final json = response.data as Map<String, dynamic>;
+    final product = Product.fromApiJson(json);
+    final variants = (json['variants'] as List<dynamic>? ?? [])
+        .whereType<Map<String, dynamic>>()
+        .map(ProductVariant.fromJson)
+        .toList();
+    return (product: product, variants: variants);
+  }
 }
 
 List<Map<String, dynamic>> _listOfMaps(dynamic data) {
   if (data is! List) return const [];
   return data.whereType<Map<String, dynamic>>().toList();
+}
+
+double _asDouble(dynamic value) {
+  if (value is num) return value.toDouble();
+  return double.tryParse('$value') ?? 0;
+}
+
+double? _asNullableDouble(dynamic value) {
+  if (value == null) return null;
+  return _asDouble(value);
+}
+
+int _asInt(dynamic value) {
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  return int.tryParse('$value') ?? 0;
 }
