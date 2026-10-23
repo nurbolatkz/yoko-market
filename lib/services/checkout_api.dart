@@ -17,14 +17,10 @@ class CheckoutApi {
   final Dio _dio;
 
   /// GET /settings/delivery — public; returns orders_enabled flag.
-  /// Returns true on any network error so infra issues never block checkout.
+  /// Throws on network error so Checkout shows an error+retry instead of opening.
   Future<bool> getOrdersEnabled() async {
-    try {
-      final resp = await _dio.get<dynamic>('/settings/delivery');
-      return (resp.data as Map<String, dynamic>)['orders_enabled'] as bool? ?? true;
-    } catch (_) {
-      return true;
-    }
+    final resp = await _dio.get<dynamic>('/settings/delivery');
+    return (resp.data as Map<String, dynamic>)['orders_enabled'] as bool? ?? false;
   }
 
   /// GET /checkout/cities — public; returns serviced cities for city picker.

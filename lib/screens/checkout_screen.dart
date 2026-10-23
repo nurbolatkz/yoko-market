@@ -151,11 +151,20 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       _street = context.read<AuthProvider>().user?.address ?? '';
     }
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final enabled = await _api.getOrdersEnabled();
-      if (!mounted) return;
-      if (!enabled) {
+      try {
+        final enabled = await _api.getOrdersEnabled();
+        if (!mounted) return;
+        if (!enabled) {
+          setState(() {
+            _ordersBlocked = true;
+            _loading = false;
+          });
+          return;
+        }
+      } catch (_) {
+        if (!mounted) return;
         setState(() {
-          _ordersBlocked = true;
+          _error = 'Не удалось загрузить настройки. Проверьте подключение.';
           _loading = false;
         });
         return;
