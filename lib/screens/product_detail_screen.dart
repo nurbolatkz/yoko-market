@@ -53,6 +53,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 ),
                 onPressed: () async {
                   final token = await context.read<AuthProvider>().getAccessToken();
+                  if (!context.mounted) return;
                   context.read<WishlistProvider>().toggle(_product, accessToken: token);
                 },
               ),
