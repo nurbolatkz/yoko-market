@@ -10,7 +10,7 @@ val keystorePropertiesFile = rootProject.file("key.properties")
 
 android {
     namespace = "kz.yokosun.yokomarket"
-    compileSdk = 37
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -55,6 +55,10 @@ kotlin {
     compilerOptions {
         jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
     }
+}
+
+dependencies {
+    implementation("androidx.core:core-splashscreen:1.0.1")
 }
 
 flutter {
