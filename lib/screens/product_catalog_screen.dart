@@ -10,6 +10,7 @@ import '../providers/wishlist_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/product_image.dart';
 import '../widgets/ui/empty_state.dart';
+import '../widgets/ui/error_state.dart';
 import 'product_detail_screen.dart';
 
 class ProductCatalogScreen extends StatefulWidget {
@@ -181,9 +182,11 @@ class _ProductCatalogScreenState extends State<ProductCatalogScreen> {
               child: provider.catalogLoading && products.isEmpty
                   ? const Center(child: CircularProgressIndicator())
                   : provider.catalogError != null
-                  ? _CatalogLoadError(
-                      message: provider.catalogError!,
-                      onRetry: provider.loadCatalog,
+                  ? Center(
+                      child: ErrorState(
+                        message: provider.catalogError,
+                        onRetry: provider.loadCatalog,
+                      ),
                     )
                   : products.isEmpty
                   ? _EmptyCatalog(
@@ -479,44 +482,6 @@ class CatalogProductCard extends StatelessWidget {
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _CatalogLoadError extends StatelessWidget {
-  const _CatalogLoadError({required this.message, required this.onRetry});
-
-  final String message;
-  final VoidCallback onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(
-              Icons.cloud_off_rounded,
-              size: 52,
-              color: AppColors.purple,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 14),
-            FilledButton.icon(
-              onPressed: onRetry,
-              icon: const Icon(Icons.refresh_rounded),
-              label: const Text('Повторить'),
-            ),
-          ],
         ),
       ),
     );

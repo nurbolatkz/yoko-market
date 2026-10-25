@@ -8,6 +8,7 @@ import '../providers/auth_provider.dart';
 import '../services/checkout_api.dart';
 import '../theme/app_theme.dart';
 import '../widgets/address_form_sheet.dart';
+import '../widgets/ui/error_state.dart';
 
 class AddressesScreen extends StatefulWidget {
   const AddressesScreen({super.key});
@@ -220,36 +221,10 @@ class _Body extends StatelessWidget {
 
     if (provider.loadState == AddressLoadState.error) {
       return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.wifi_off_rounded,
-                  size: 56, color: AppColors.navyMuted),
-              const SizedBox(height: 16),
-              Text(
-                provider.error ?? 'Ошибка загрузки',
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                    color: AppColors.navy,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: 20),
-              FilledButton.icon(
-                onPressed: onRetry,
-                icon: const Icon(Icons.refresh_rounded, size: 18),
-                label: const Text('Повторить'),
-                style: FilledButton.styleFrom(
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                ),
-              ),
-            ],
-          ),
+        child: ErrorState(
+          message: provider.error,
+          onRetry: onRetry,
+          onBack: Navigator.canPop(context) ? () => Navigator.pop(context) : null,
         ),
       );
     }

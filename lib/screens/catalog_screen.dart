@@ -10,6 +10,7 @@ import '../providers/market_provider.dart';
 import '../providers/wishlist_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/product_image.dart';
+import '../widgets/ui/error_state.dart';
 import 'product_detail_screen.dart';
 import 'promotion_detail_screen.dart';
 
@@ -56,9 +57,11 @@ class _CatalogScreenState extends State<CatalogScreen> {
             if (isInitialLoad)
               _HomeSkeleton(cartCount: cartCount)
             else if (hasError)
-              _HomeErrorView(
-                message: provider.catalogError!,
-                onRetry: () => provider.retryAll(),
+              Center(
+                child: ErrorState(
+                  message: provider.catalogError,
+                  onRetry: () => provider.retryAll(),
+                ),
               )
             else
               CustomScrollView(
@@ -277,54 +280,6 @@ class _HomeSkeleton extends StatelessWidget {
           child: SizedBox(height: cartCount > 0 ? 120 : 96),
         ),
       ],
-    );
-  }
-}
-
-class _HomeErrorView extends StatelessWidget {
-  const _HomeErrorView({required this.message, required this.onRetry});
-
-  final String message;
-  final VoidCallback onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(
-              Icons.wifi_off_rounded,
-              size: 56,
-              color: AppColors.navyMuted,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: AppColors.navy,
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 20),
-            FilledButton.icon(
-              onPressed: onRetry,
-              icon: const Icon(Icons.refresh_rounded, size: 18),
-              label: const Text('Повторить'),
-              style: FilledButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

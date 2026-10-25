@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import '../models/order.dart';
 import '../providers/auth_provider.dart';
 import '../services/orders_api.dart';
+import '../utils/dio_error.dart';
 
 class OrdersProvider with ChangeNotifier {
   OrdersProvider({OrdersApi? api}) : _api = api ?? OrdersApi();
@@ -49,8 +50,8 @@ class OrdersProvider with ChangeNotifier {
         }
       }
       _error = null;
-    } catch (_) {
-      _error = 'Не удалось загрузить заказы. Проверьте подключение.';
+    } catch (e) {
+      _error = networkErrorMessage(e);
     } finally {
       _loading = false;
       notifyListeners();

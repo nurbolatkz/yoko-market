@@ -7,7 +7,9 @@ import '../providers/market_provider.dart';
 import '../providers/wishlist_provider.dart';
 import '../services/catalog_api.dart';
 import '../theme/app_theme.dart';
+import '../utils/dio_error.dart';
 import '../widgets/product_image.dart';
+import '../widgets/ui/error_state.dart';
 
 class ProductDetailScreen extends StatefulWidget {
   const ProductDetailScreen({super.key, required this.product});
@@ -25,6 +27,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   int _qty = 1;
   int _galleryPage = 0;
   final _pageCtrl = PageController();
+  bool _detailLoading = true;
+  String? _detailError;
 
   @override
   void initState() {
@@ -41,16 +45,26 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   }
 
   Future<void> _loadDetail() async {
+    setState(() {
+      _detailLoading = true;
+      _detailError = null;
+    });
     try {
-      final result = await context.read<MarketProvider>().getProductById(_baseProduct.id);
+      final result =
+          await context.read<MarketProvider>().getProductById(_baseProduct.id);
       if (!mounted) return;
       setState(() {
         _baseProduct = result.product;
         _activeProduct = result.product;
         _variants = result.variants;
+        _detailLoading = false;
       });
-    } catch (_) {
-      // Detail enrichment failed — initial product data is already shown
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _detailLoading = false;
+        _detailError = networkErrorMessage(e);
+      });
     }
   }
 
@@ -86,6 +100,25 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_detailLoading) {
+      return Scaffold(
+        appBar: AppBar(),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+    if (_detailError != null) {
+      return Scaffold(
+        appBar: AppBar(),
+        body: Center(
+          child: ErrorState(
+            message: _detailError,
+            onRetry: _loadDetail,
+            onBack: () => Navigator.pop(context),
+          ),
+        ),
+      );
+    }
+
     final provider = context.watch<MarketProvider>();
     final wishlist = context.watch<WishlistProvider>();
     final isFav = wishlist.isFavorite(_activeProduct.id);

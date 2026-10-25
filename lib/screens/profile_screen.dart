@@ -5,6 +5,7 @@ import '../providers/address_provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/orders_provider.dart';
 import '../theme/app_theme.dart';
+import '../widgets/ui/error_state.dart';
 import 'addresses_screen.dart';
 import 'auth/phone_screen.dart';
 import 'delivery_info_screen.dart';
@@ -32,8 +33,17 @@ class ProfileScreen extends StatelessWidget {
     }
 
     if (auth.state == AuthState.sessionError) {
-      return _SessionErrorView(
-        onRetry: () => context.read<AuthProvider>().retryInit(),
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Профиль',
+              style: TextStyle(fontWeight: FontWeight.w700)),
+        ),
+        body: Center(
+          child: ErrorState(
+            message: 'Проверьте интернет и попробуйте ещё раз.',
+            onRetry: () => context.read<AuthProvider>().retryInit(),
+          ),
+        ),
       );
     }
 
@@ -102,61 +112,6 @@ class _GuestView extends StatelessWidget {
                     ),
                   ),
                   child: const Text('Войти', style: TextStyle(fontSize: 16)),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ── Session error view ────────────────────────────────────────────────────────
-
-class _SessionErrorView extends StatelessWidget {
-  const _SessionErrorView({required this.onRetry});
-
-  final VoidCallback onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Профиль', style: TextStyle(fontWeight: FontWeight.bold)),
-      ),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.wifi_off_rounded, size: 64, color: theme.colorScheme.outline),
-              const SizedBox(height: 16),
-              Text(
-                'Не удалось восстановить сессию',
-                textAlign: TextAlign.center,
-                style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Проверьте подключение к интернету',
-                textAlign: TextAlign.center,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: 24),
-              FilledButton.icon(
-                onPressed: onRetry,
-                icon: const Icon(Icons.refresh_rounded),
-                label: const Text('Повторить'),
-                style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
                 ),
               ),
             ],

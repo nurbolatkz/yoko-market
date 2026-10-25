@@ -6,6 +6,7 @@ import '../providers/auth_provider.dart';
 import '../providers/orders_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/ui/empty_state.dart';
+import '../widgets/ui/error_state.dart';
 import 'order_detail_screen.dart';
 import 'reorder_screen.dart';
 
@@ -65,14 +66,21 @@ class _OrdersScreenState extends State<OrdersScreen> {
     }
 
     if (prov.error == 'auth') {
-      return _ErrorView(
-        message: 'Сессия истекла. Войдите снова.',
-        onRetry: null,
+      return Center(
+        child: ErrorState(
+          message: 'Сессия истекла. Войдите снова.',
+          onRetry: _load,
+        ),
       );
     }
 
     if (prov.error != null) {
-      return _ErrorView(message: prov.error!, onRetry: _load);
+      return Center(
+        child: ErrorState(
+          message: prov.error,
+          onRetry: _load,
+        ),
+      );
     }
 
     if (prov.orders.isEmpty) {
@@ -261,44 +269,6 @@ class _StatusChip extends StatelessWidget {
         'shipped' || 'confirmed' || 'payment_received' => AppColors.purple,
         _ => AppColors.navyMuted,
       };
-}
-
-// ── Error view ────────────────────────────────────────────────────────────────
-
-class _ErrorView extends StatelessWidget {
-  const _ErrorView({required this.message, this.onRetry});
-  final String message;
-  final VoidCallback? onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.cloud_off_rounded,
-                size: 52, color: AppColors.purple),
-            const SizedBox(height: 12),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            if (onRetry != null) ...[
-              const SizedBox(height: 16),
-              FilledButton.icon(
-                onPressed: onRetry,
-                icon: const Icon(Icons.refresh_rounded),
-                label: const Text('Повторить'),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
 }
 
 // ── Formatters ────────────────────────────────────────────────────────────────

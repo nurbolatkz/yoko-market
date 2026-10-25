@@ -8,6 +8,7 @@ import '../models/cart_item.dart';
 import '../models/product.dart';
 import '../models/product_category.dart';
 import '../services/catalog_api.dart';
+import '../utils/dio_error.dart';
 
 class MarketProvider with ChangeNotifier {
   MarketProvider({CatalogDataSource? catalogDataSource})
@@ -160,10 +161,10 @@ class MarketProvider with ChangeNotifier {
       _products = page;
       _loadedOffset = page.length;
       _hasMore = page.length == _pageSize;
-    } catch (_) {
+    } catch (e) {
       if (requestVersion != _requestVersion) return;
       _products = const [];
-      _catalogError = 'Не удалось загрузить товары. Проверьте подключение.';
+      _catalogError = networkErrorMessage(e);
       _hasMore = false;
     } finally {
       if (requestVersion == _requestVersion) {
@@ -192,10 +193,10 @@ class MarketProvider with ChangeNotifier {
       _products = page;
       _loadedOffset = page.length;
       _hasMore = page.length == _pageSize;
-    } catch (_) {
+    } catch (e) {
       if (requestVersion != _requestVersion) return;
       _products = const [];
-      _catalogError = 'Не удалось загрузить товары. Проверьте подключение.';
+      _catalogError = networkErrorMessage(e);
       _hasMore = false;
     } finally {
       if (requestVersion == _requestVersion) {
