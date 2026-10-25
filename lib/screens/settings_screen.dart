@@ -3,12 +3,14 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../config/app_config.dart';
 import '../providers/address_provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/orders_provider.dart';
 import '../services/legal_settings_api.dart';
 import '../theme/app_theme.dart';
 import 'delete_account_screen.dart';
+import 'dev/ui_gallery_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -173,6 +175,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 MaterialPageRoute(
                   builder: (_) => const DeleteAccountScreen(),
                 ),
+              ),
+            ),
+          ],
+
+          // ── Dev section (UI_PREVIEW builds only) ──────────────────────────
+          if (AppConfig.uiPreview) ...[
+            const SizedBox(height: 20),
+            _SectionHeader('Dev'),
+            const SizedBox(height: 8),
+            _SettingsTile(
+              icon: Icons.palette_outlined,
+              title: 'Галерея компонентов (dev)',
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const UiGalleryScreen()),
               ),
             ),
           ],
