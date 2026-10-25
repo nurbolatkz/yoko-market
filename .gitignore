@@ -68,3 +68,7 @@ key.properties
 
 # Local reference project used for API contract inspection
 /yokosun_flutter/
+
+# Claude Code local settings
+.claude/settings.local.json
+.claude/worktrees/
