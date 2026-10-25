@@ -73,8 +73,7 @@ class ProductCard extends StatelessWidget {
                   if (meta != null || size != null) ...[
                     const SizedBox(height: 4),
                     Text(
-                      [if (size != null) size!, if (meta != null) meta!]
-                          .join(' · '),
+                      [size, meta].nonNulls.join(' · '),
                       style: const TextStyle(
                         fontFamily: 'NunitoSans',
                         fontSize: 12,

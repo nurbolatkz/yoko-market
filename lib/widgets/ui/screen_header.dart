@@ -67,7 +67,7 @@ class ScreenHeader extends StatelessWidget {
                   ),
                 ),
               ),
-              if (actions != null) ...actions!,
+              ...?actions,
             ],
           ),
           if (bottom != null) ...[

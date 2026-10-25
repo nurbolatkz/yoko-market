@@ -59,7 +59,7 @@ class _SkeletonState extends State<Skeleton>
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: _anim,
-      builder: (_, __) => Opacity(
+      builder: (_, _) => Opacity(
         opacity: _anim.value,
         child: Container(
           width: widget.width,
