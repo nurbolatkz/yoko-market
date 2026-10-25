@@ -11,6 +11,7 @@ import 'providers/auth_provider.dart';
 import 'providers/market_provider.dart';
 import 'providers/orders_provider.dart';
 import 'providers/wishlist_provider.dart';
+import 'screens/auth/onboarding_screen.dart';
 import 'screens/main_screen.dart';
 import 'screens/welcome_screen.dart';
 import 'services/preview_auth.dart';
@@ -29,20 +30,23 @@ bool _isRunningUnderTest() {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // Read the pref before the first frame so _StartScreen never renders a blank
+  // Read the prefs before the first frame so _StartScreen never renders a blank
   // loading scaffold — the decision is synchronous from the widget's perspective.
   bool welcomeShown = false;
+  bool onboardingShown = false;
   if (!_isRunningUnderTest()) {
     try {
       final prefs = await SharedPreferences.getInstance()
           .timeout(const Duration(seconds: 2));
       welcomeShown = prefs.getBool('welcome_shown') ?? false;
       if (!welcomeShown) await prefs.setBool('welcome_shown', true);
+      onboardingShown = prefs.getBool('onboarding_shown') ?? false;
     } catch (_) {
       welcomeShown = true; // on failure, skip the animation
+      onboardingShown = true;
     }
   }
-  runApp(YokoMarketApp(welcomeShown: welcomeShown));
+  runApp(YokoMarketApp(welcomeShown: welcomeShown, onboardingShown: onboardingShown));
 }
 
 class YokoMarketApp extends StatelessWidget {
@@ -50,10 +54,12 @@ class YokoMarketApp extends StatelessWidget {
     super.key,
     this.marketProvider,
     this.welcomeShown = true,
+    this.onboardingShown = true,
   });
 
   final MarketProvider? marketProvider;
   final bool welcomeShown;
+  final bool onboardingShown;
 
   @override
   Widget build(BuildContext context) {
@@ -113,7 +119,7 @@ class YokoMarketApp extends StatelessWidget {
         debugShowCheckedModeBanner: false,
         theme: AppTheme.light,
         themeMode: ThemeMode.light,
-        home: _StartScreen(welcomeShown: welcomeShown),
+        home: _StartScreen(welcomeShown: welcomeShown, onboardingShown: onboardingShown),
       ),
     );
   }
@@ -123,9 +129,13 @@ class YokoMarketApp extends StatelessWidget {
 /// otherwise. [MainScreen] is always in the tree so API calls start
 /// immediately — the animation never delays data loading.
 class _StartScreen extends StatefulWidget {
-  const _StartScreen({required this.welcomeShown});
+  const _StartScreen({
+    required this.welcomeShown,
+    this.onboardingShown = true,
+  });
 
   final bool welcomeShown;
+  final bool onboardingShown;
 
   @override
   State<_StartScreen> createState() => _StartScreenState();
@@ -140,15 +150,28 @@ class _StartScreenState extends State<_StartScreen> {
     _showOverlay = !widget.welcomeShown && !_isRunningUnderTest();
   }
 
+  void _onOverlayDone() {
+    setState(() => _showOverlay = false);
+    if (!widget.onboardingShown) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final auth = context.read<AuthProvider>();
+        if (auth.state != AuthState.authenticated) {
+          Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const OnboardingScreen()),
+          );
+        }
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (!_showOverlay) return const MainScreen();
     return Stack(
       children: [
         const MainScreen(),
-        WelcomeOverlay(
-          onDone: () => setState(() => _showOverlay = false),
-        ),
+        WelcomeOverlay(onDone: _onOverlayDone),
       ],
     );
   }
