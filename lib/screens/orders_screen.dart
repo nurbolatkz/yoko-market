@@ -5,6 +5,7 @@ import '../models/order.dart';
 import '../providers/auth_provider.dart';
 import '../providers/orders_provider.dart';
 import '../theme/app_theme.dart';
+import '../widgets/ui/empty_state.dart';
 import 'order_detail_screen.dart';
 import 'reorder_screen.dart';
 
@@ -75,7 +76,19 @@ class _OrdersScreenState extends State<OrdersScreen> {
     }
 
     if (prov.orders.isEmpty) {
-      return _EmptyView(onBrowse: () => Navigator.pop(context));
+      return SingleChildScrollView(
+        child: EmptyState(
+          icon: const Icon(
+            Icons.receipt_long_outlined,
+            size: 56,
+            color: AppColors.navyMuted,
+          ),
+          headline: 'Первая покупка впереди',
+          body: 'Здесь появятся ваши заказы, статусы доставки и возможность повторить покупку.',
+          actionLabel: 'Открыть каталог',
+          onAction: () => Navigator.pop(context),
+        ),
+      );
     }
 
     return RefreshIndicator(
@@ -250,57 +263,7 @@ class _StatusChip extends StatelessWidget {
       };
 }
 
-// ── Empty / error views ───────────────────────────────────────────────────────
-
-class _EmptyView extends StatelessWidget {
-  const _EmptyView({required this.onBrowse});
-  final VoidCallback onBrowse;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(
-              Icons.receipt_long_outlined,
-              size: 72,
-              color: AppColors.purple,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Заказов пока нет',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.navy,
-                  ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Ваши заказы появятся здесь',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: AppColors.navyMuted),
-            ),
-            const SizedBox(height: 24),
-            FilledButton.icon(
-              onPressed: onBrowse,
-              icon: const Icon(Icons.storefront_outlined),
-              label: const Text('За покупками'),
-              style: FilledButton.styleFrom(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
+// ── Error view ────────────────────────────────────────────────────────────────
 
 class _ErrorView extends StatelessWidget {
   const _ErrorView({required this.message, this.onRetry});
