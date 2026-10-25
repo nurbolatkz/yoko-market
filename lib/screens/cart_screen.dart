@@ -2,12 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../models/cart_item.dart';
+import '../models/product.dart';
 import '../providers/auth_provider.dart';
 import '../providers/market_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/product_image.dart';
+import '../widgets/ui/empty_state.dart';
+import '../widgets/ui/product_card.dart';
 import 'auth/phone_screen.dart';
 import 'checkout_screen.dart';
+import 'product_detail_screen.dart';
 
 class CartScreen extends StatelessWidget {
   const CartScreen({super.key, this.onGoToCatalog});
@@ -63,46 +67,85 @@ class CartScreen extends StatelessWidget {
 
 class _EmptyCart extends StatelessWidget {
   const _EmptyCart({this.onGoToCatalog});
-
   final VoidCallback? onGoToCatalog;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.shopping_cart_outlined,
-              size: 72,
-              color: theme.colorScheme.outline,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Корзина пуста',
-              style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Добавьте товары из каталога',
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: 24),
-            if (onGoToCatalog != null)
-              FilledButton.icon(
-                onPressed: onGoToCatalog,
-                icon: const Icon(Icons.grid_view_rounded),
-                label: const Text('Перейти в каталог'),
-              ),
-          ],
+    final popular = context
+        .watch<MarketProvider>()
+        .featuredProducts
+        .take(4)
+        .toList();
+
+    return SingleChildScrollView(
+      child: EmptyState(
+        title: 'Корзина пуста',
+        icon: const Icon(
+          Icons.shopping_cart_outlined,
+          size: 56,
+          color: AppColors.navyMuted,
         ),
+        headline: 'Начнём покупки?',
+        body: 'Добавьте товары из каталога — они появятся здесь.',
+        actionLabel: 'Открыть каталог',
+        onAction: onGoToCatalog,
+        bottom: popular.isEmpty ? null : _PopularGrid(products: popular),
       ),
+    );
+  }
+}
+
+class _PopularGrid extends StatelessWidget {
+  const _PopularGrid({required this.products});
+  final List<Product> products;
+
+  @override
+  Widget build(BuildContext context) {
+    final market = context.watch<MarketProvider>();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Популярные товары',
+          style: TextStyle(
+            fontFamily: 'NunitoSans',
+            fontSize: 18,
+            fontWeight: FontWeight.w800,
+            color: AppColors.navy,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            mainAxisExtent: 248,
+            crossAxisSpacing: 10,
+            mainAxisSpacing: 10,
+          ),
+          itemCount: products.length,
+          itemBuilder: (context, i) {
+            final p = products[i];
+            return ProductCard(
+              name: p.title,
+              price: p.price.round(),
+              regularPrice: p.originalPrice?.round(),
+              imageUrl: p.imageUrl,
+              size: p.packageInfo.isEmpty ? null : p.packageInfo,
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ProductDetailScreen(product: p),
+                ),
+              ),
+              onAddToCart: p.inStock ? () => market.addToCart(p) : null,
+              isInCart: market.cartQuantityFor(p.id) > 0,
+            );
+          },
+        ),
+      ],
     );
   }
 }
