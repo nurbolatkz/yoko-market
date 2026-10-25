@@ -96,14 +96,17 @@ class AuthService {
     if (token == null) throw Exception('no_token');
     final data = <String, dynamic>{
       'full_name': ?fullName,
-      'city_code': ?cityCode,
+      'city': ?cityCode,
     };
-    final resp = await _dio.patch<dynamic>(
+    await _dio.patch<dynamic>(
       '/profile',
       data: data,
       options: Options(headers: {'Authorization': 'Bearer $token'}),
     );
-    return UserProfile.fromJson(resp.data as Map<String, dynamic>);
+    // PATCH returns {ok: true}, not a profile — re-fetch to get updated fields.
+    final updated = await getProfile();
+    if (updated == null) throw Exception('profile_unavailable');
+    return updated;
   }
 
   Future<UserProfile?> getProfile() async {

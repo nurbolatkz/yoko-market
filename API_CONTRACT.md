@@ -20,6 +20,7 @@
 | GET | `/my-orders/{id}` | Bearer | OrderDetailScreen, ReorderScreen | partial (нет variant_id) |
 | GET | `/products/{id}` | нет | ReorderScreen (параллельные запросы) | ready |
 | DELETE | `/auth/account` | Bearer | DeleteAccountScreen | ready |
+| PATCH | `/profile` | Bearer | ProfileSetupScreen, PersonalDataScreen | ready |
 | POST | `/support/account-recovery` | нет | AccountRecoveryScreen | awaiting-backend |
 
 > Добавляй строку в таблицу при каждом новом эндпоинте. Ниже размещай полное описание секцией.
@@ -218,7 +219,7 @@
 
 ### PATCH /profile
 
-**Статус:** partial (поле `city_code` ожидает бэкенд)  
+**Статус:** ready  
 **Авторизация:** Bearer token  
 **Используется в:** ProfileSetupScreen, PersonalDataScreen  
 
@@ -226,14 +227,18 @@
 ```json
 {
   "full_name": "Айгерим Сейткали",
-  "city_code": "almaty"
+  "city": "almaty"
 }
 ```
 
-> ⚠️ Поле `city_code` — код из GET /checkout/cities (поле `code`). Статус: awaiting-backend — бэкенд ещё не принимает это поле, клиент отправляет его уже сейчас.
+> Поле `city` — это `code` из GET /checkout/cities (например `"almaty"`). Бэкенд сохраняет `user.city = code` и автоматически подбирает `user.branch_id` по активным филиалам.
+
+> **Ответ PATCH** возвращает `{"ok": true, "referral_applied": false}` — не UserProfile. Клиент вызывает GET /profile следом, чтобы получить обновлённые данные.
 
 #### Успешный ответ (200)
-Возвращает обновлённый UserProfile в том же формате, что GET /profile.
+```json
+{"ok": true, "referral_applied": false}
+```
 
 #### Коды ошибок
 | Код | Тело | Когда |
