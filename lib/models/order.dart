@@ -7,11 +7,15 @@ class OrderItem {
     required this.name,
     required this.qty,
     required this.unitPrice,
+    this.productId,
   });
 
   final String name;
   final int qty;
   final int unitPrice;
+  // Populated from the backend JSONB field `product_id` (present since checkout
+  // service v2). Null for orders created before that field was added.
+  final String? productId;
 
   int get lineTotal => unitPrice * qty;
 
@@ -19,6 +23,7 @@ class OrderItem {
         name: j['name'] as String,
         qty: (j['qty'] as num).toInt(),
         unitPrice: (j['price'] as num).toInt(),
+        productId: j['product_id'] as String?,
       );
 }
 

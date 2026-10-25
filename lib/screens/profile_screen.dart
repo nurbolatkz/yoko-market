@@ -10,6 +10,7 @@ import 'auth/phone_screen.dart';
 import 'delivery_info_screen.dart';
 import 'invite_screen.dart';
 import 'orders_screen.dart';
+import 'reorder_screen.dart';
 import 'settings_screen.dart';
 import 'personal_data_screen.dart';
 import 'support_screen.dart';
@@ -191,7 +192,9 @@ class _AuthenticatedViewState extends State<_AuthenticatedView> {
   Widget build(BuildContext context) {
     final user = widget.auth.user!;
     final op = context.watch<OrdersProvider>();
-    final hasOrders = !op.loading && op.error == null && op.orders.isNotEmpty;
+    final lastDelivered = (!op.loading && op.error == null)
+        ? op.orders.where((o) => o.status == 'delivered').firstOrNull
+        : null;
 
     return Scaffold(
       backgroundColor: _kProfileBg,
@@ -227,13 +230,15 @@ class _AuthenticatedViewState extends State<_AuthenticatedView> {
             ),
           ),
 
-          // 3. Reorder button — only visible when past orders exist
-          if (hasOrders) ...[
+          // 3. Reorder button — only visible when a delivered order exists
+          if (lastDelivered != null) ...[
             const SizedBox(height: 12),
             _ReorderButton(
               onTap: () => Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const OrdersScreen()),
+                MaterialPageRoute(
+                  builder: (_) => ReorderScreen(order: lastDelivered),
+                ),
               ),
             ),
           ],

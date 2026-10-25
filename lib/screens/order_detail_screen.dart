@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../models/order.dart';
 import '../theme/app_theme.dart';
+import '../widgets/ui/app_button.dart';
+import 'reorder_screen.dart';
 
 class OrderDetailScreen extends StatelessWidget {
   const OrderDetailScreen({super.key, required this.order});
@@ -134,6 +136,22 @@ class OrderDetailScreen extends StatelessWidget {
               ),
             ],
           ),
+
+          // Reorder — visible for completed orders
+          if (order.status == 'delivered' || order.status == 'cancelled') ...[
+            const SizedBox(height: 24),
+            AppButton(
+              label: 'Повторить заказ',
+              icon: const Icon(Icons.replay_rounded, size: 18),
+              fullWidth: true,
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ReorderScreen(order: order),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );

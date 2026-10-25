@@ -6,6 +6,7 @@ import '../providers/auth_provider.dart';
 import '../providers/orders_provider.dart';
 import '../theme/app_theme.dart';
 import 'order_detail_screen.dart';
+import 'reorder_screen.dart';
 
 class OrdersScreen extends StatefulWidget {
   const OrdersScreen({super.key});
@@ -86,6 +87,8 @@ class _OrdersScreenState extends State<OrdersScreen> {
         separatorBuilder: (_, _) => const SizedBox(height: 10),
         itemBuilder: (context, i) {
           final order = prov.orders[i];
+          final isCompleted =
+              order.status == 'delivered' || order.status == 'cancelled';
           return _OrderCard(
             order: order,
             onTap: () => Navigator.push(
@@ -94,6 +97,14 @@ class _OrdersScreenState extends State<OrdersScreen> {
                 builder: (_) => OrderDetailScreen(order: order),
               ),
             ),
+            onReorder: isCompleted
+                ? () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ReorderScreen(order: order),
+                      ),
+                    )
+                : null,
           );
         },
       ),
@@ -104,9 +115,14 @@ class _OrdersScreenState extends State<OrdersScreen> {
 // ── Order card ────────────────────────────────────────────────────────────────
 
 class _OrderCard extends StatelessWidget {
-  const _OrderCard({required this.order, required this.onTap});
+  const _OrderCard({
+    required this.order,
+    required this.onTap,
+    this.onReorder,
+  });
   final OrderSummary order;
   final VoidCallback onTap;
+  final VoidCallback? onReorder;
 
   @override
   Widget build(BuildContext context) {
@@ -167,6 +183,33 @@ class _OrderCard extends StatelessWidget {
                 ),
               ],
             ),
+            if (onReorder != null) ...[
+              const SizedBox(height: 6),
+              const Divider(height: 1, color: AppColors.border),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: onReorder,
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppColors.purple,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 0, vertical: 8),
+                    textStyle: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.replay_rounded, size: 15),
+                      SizedBox(width: 4),
+                      Text('Повторить'),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),
