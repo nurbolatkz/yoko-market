@@ -19,6 +19,7 @@
 | GET | `/my-orders` | Bearer | OrdersScreen, ProfileScreen | ready |
 | GET | `/my-orders/{id}` | Bearer | OrderDetailScreen, ReorderScreen | partial (нет variant_id) |
 | GET | `/products/{id}` | нет | ReorderScreen (параллельные запросы) | ready |
+| DELETE | `/auth/account` | Bearer | DeleteAccountScreen | ready |
 
 > Добавляй строку в таблицу при каждом новом эндпоинте. Ниже размещай полное описание секцией.
 
@@ -153,6 +154,34 @@
 | 404 | `{"detail": "not_found"}` | Товар удалён или не существует |
 
 > ReorderScreen обрабатывает 404: позиция считается недоступной.
+
+---
+
+### DELETE /auth/account
+
+**Статус:** ready  
+**Авторизация:** Bearer token  
+**Используется в:** DeleteAccountScreen
+
+Мягкое удаление аккаунта: анонимизирует PII пользователя, отменяет заказы со статусом `pending_payment`.  
+Заказы в статусах `confirmed`, `payment_received`, `shipped` **блокируют** удаление (бэкенд вернёт 400).
+
+#### Запрос
+Тело отсутствует.
+
+#### Успешный ответ (200)
+```json
+{"ok": true, "deleted": true}
+```
+
+#### Коды ошибок
+| Код | Тело | Когда |
+|---|---|---|
+| 400 | `{"detail": "active_orders"}` | Есть заказы в статусе confirmed / payment_received / shipped |
+| 401 | `{"detail": "unauthorized"}` | Невалидный / истёкший токен |
+
+> Клиент перед запросом показывает экран подтверждения + OTP-проверку.  
+> После успешного ответа: клиент очищает токены, корзину, избранное, адреса.
 
 ---
 

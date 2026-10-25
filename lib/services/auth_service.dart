@@ -96,7 +96,7 @@ class AuthService {
     if (token == null) throw Exception('no_token');
     final resp = await _dio.patch<dynamic>(
       '/profile',
-      data: {if (fullName != null) 'full_name': fullName},
+      data: {'full_name': ?fullName},
       options: Options(headers: {'Authorization': 'Bearer $token'}),
     );
     return UserProfile.fromJson(resp.data as Map<String, dynamic>);
@@ -128,6 +128,16 @@ class AuthService {
         );
       } catch (_) {}
     }
+  }
+
+  Future<void> deleteAccount() async {
+    final token = await _storage.read(key: _accessKey);
+    if (token == null) throw Exception('no_token');
+    await _dio.delete<dynamic>(
+      '/auth/account',
+      options: Options(headers: {'Authorization': 'Bearer $token'}),
+    );
+    await clearTokens();
   }
 
   Future<String?> getAccessToken() => _storage.read(key: _accessKey);

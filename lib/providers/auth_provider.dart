@@ -90,4 +90,11 @@ class AuthProvider with ChangeNotifier {
     _state = AuthState.guest;
     notifyListeners();
   }
+
+  Future<void> deleteAccount() async {
+    await _auth.deleteAccount();
+    _user = null;
+    _state = AuthState.guest;
+    notifyListeners();
+  }
 }

@@ -8,6 +8,7 @@ import '../providers/auth_provider.dart';
 import '../providers/orders_provider.dart';
 import '../services/legal_settings_api.dart';
 import '../theme/app_theme.dart';
+import 'delete_account_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -160,6 +161,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
               iconColor: Colors.redAccent,
               showChevron: false,
               onTap: _confirmLogout,
+            ),
+            const SizedBox(height: 8),
+            _SettingsTile(
+              icon: Icons.no_accounts_outlined,
+              title: 'Удалить аккаунт',
+              titleColor: Colors.red.shade700,
+              iconColor: Colors.red.shade700,
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const DeleteAccountScreen(),
+                ),
+              ),
             ),
           ],
         ],
