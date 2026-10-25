@@ -74,8 +74,8 @@ class AuthProvider with ChangeNotifier {
     return newToken;
   }
 
-  Future<UserProfile> patchUser({String? fullName}) async {
-    final updated = await _auth.patchProfile(fullName: fullName);
+  Future<UserProfile> patchUser({String? fullName, String? cityCode}) async {
+    final updated = await _auth.patchProfile(fullName: fullName, cityCode: cityCode);
     _user = updated;
     notifyListeners();
     return updated;
