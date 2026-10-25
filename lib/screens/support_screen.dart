@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../config/app_config.dart';
 import '../theme/app_theme.dart';
+import 'auth/account_recovery_screen.dart';
 
 class SupportScreen extends StatefulWidget {
   const SupportScreen({super.key});
@@ -131,6 +132,25 @@ class _SupportScreenState extends State<SupportScreen> {
         const SizedBox(height: 12),
         for (final node in _roots)
           _FaqTile(node: node, onOpenManager: _openManager),
+        const Divider(height: 32),
+        ListTile(
+          leading: const Icon(Icons.manage_accounts_outlined,
+              color: AppColors.navyMuted),
+          title: const Text('Восстановить аккаунт',
+              style: TextStyle(
+                  color: AppColors.navy,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 15)),
+          trailing: const Icon(Icons.chevron_right_rounded,
+              color: AppColors.navyMuted, size: 20),
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (_) => const AccountRecoveryScreen()),
+          ),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        ),
       ],
     );
   }

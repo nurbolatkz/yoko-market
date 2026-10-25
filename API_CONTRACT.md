@@ -20,6 +20,7 @@
 | GET | `/my-orders/{id}` | Bearer | OrderDetailScreen, ReorderScreen | partial (нет variant_id) |
 | GET | `/products/{id}` | нет | ReorderScreen (параллельные запросы) | ready |
 | DELETE | `/auth/account` | Bearer | DeleteAccountScreen | ready |
+| POST | `/support/account-recovery` | нет | AccountRecoveryScreen | awaiting-backend |
 
 > Добавляй строку в таблицу при каждом новом эндпоинте. Ниже размещай полное описание секцией.
 
@@ -182,6 +183,62 @@
 
 > Клиент перед запросом показывает экран подтверждения + OTP-проверку.  
 > После успешного ответа: клиент очищает токены, корзину, избранное, адреса.
+
+---
+
+---
+
+### POST /support/account-recovery
+
+**Статус:** awaiting-backend  
+**Авторизация:** нет (публичный)  
+**Используется в:** AccountRecoveryScreen  
+**Mock-флаг:** `MOCK_RECOVERY=true` (по умолчанию `true`)
+
+#### Запрос
+```json
+{
+  "order_number": "A-1098",
+  "contact": "+77771234567"
+}
+```
+
+#### Успешный ответ (200)
+```json
+{"ok": true}
+```
+
+#### Коды ошибок
+| Код | Тело | Когда |
+|---|---|---|
+| 400 | `{"detail": "invalid_input"}` | Пустые или некорректные поля |
+| 429 | `{"detail": "too_many_requests"}` | Слишком частые запросы |
+
+---
+
+### PATCH /profile
+
+**Статус:** partial (поле `city_code` ожидает бэкенд)  
+**Авторизация:** Bearer token  
+**Используется в:** ProfileSetupScreen, PersonalDataScreen  
+
+#### Запрос
+```json
+{
+  "full_name": "Айгерим Сейткали",
+  "city_code": "almaty"
+}
+```
+
+> ⚠️ Поле `city_code` — код из GET /checkout/cities (поле `code`). Статус: awaiting-backend — бэкенд ещё не принимает это поле, клиент отправляет его уже сейчас.
+
+#### Успешный ответ (200)
+Возвращает обновлённый UserProfile в том же формате, что GET /profile.
+
+#### Коды ошибок
+| Код | Тело | Когда |
+|---|---|---|
+| 401 | `{"detail": "unauthorized"}` | Невалидный токен |
 
 ---
 

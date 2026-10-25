@@ -7,6 +7,7 @@ import '../providers/orders_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/ui/error_state.dart';
 import 'addresses_screen.dart';
+import 'auth/account_recovery_screen.dart';
 import 'auth/phone_screen.dart';
 import 'delivery_info_screen.dart';
 import 'invite_screen.dart';
@@ -266,6 +267,21 @@ class _AuthenticatedViewState extends State<_AuthenticatedView> {
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(builder: (_) => const OrdersScreen()),
+          ),
+        ),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (_) => const AccountRecoveryScreen()),
+            ),
+            icon: const Icon(Icons.history_rounded,
+                size: 18, color: AppColors.navyMuted),
+            label: const Text('Не видите старые заказы?',
+                style:
+                    TextStyle(color: AppColors.navyMuted, fontSize: 13)),
           ),
         ),
         const SizedBox(height: 8),
