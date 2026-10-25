@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 
 import '../providers/market_provider.dart';
 import '../providers/wishlist_provider.dart';
-import '../theme/app_theme.dart';
 import 'catalog_screen.dart';
 import 'cart_screen.dart';
 import 'favorites_screen.dart';
@@ -47,11 +46,8 @@ class _MainScreenState extends State<MainScreen> {
         top: false,
         child: NavigationBar(
           selectedIndex: _currentIndex,
-          onDestinationSelected: (index) {
-            setState(() {
-              _currentIndex = index;
-            });
-          },
+          onDestinationSelected: (index) =>
+              setState(() => _currentIndex = index),
           destinations: [
             const NavigationDestination(
               icon: Icon(Icons.home_outlined),
@@ -93,36 +89,6 @@ class _MainScreenState extends State<MainScreen> {
               icon: Icon(Icons.person_outline),
               selectedIcon: Icon(Icons.person),
               label: 'Профиль',
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _SimpleSection extends StatelessWidget {
-  const _SimpleSection({required this.title, required this.icon});
-
-  final String title;
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
-      ),
-      body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 68, color: AppColors.purple),
-            const SizedBox(height: 12),
-            Text(
-              title,
-              style: Theme.of(context).textTheme.headlineSmall
-                  ?.copyWith(fontWeight: FontWeight.w700),
             ),
           ],
         ),
