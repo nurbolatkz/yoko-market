@@ -1,16 +1,25 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../providers/auth_provider.dart';
+import '../../services/legal_settings_api.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/ui/app_button.dart';
 import 'otp_screen.dart';
 
 class PhoneScreen extends StatefulWidget {
-  const PhoneScreen({super.key, this.onSuccess});
+  const PhoneScreen({
+    super.key,
+    this.onSuccess,
+    this.fromCheckout = false,
+  });
 
   final VoidCallback? onSuccess;
+  final bool fromCheckout;
 
   @override
   State<PhoneScreen> createState() => _PhoneScreenState();
@@ -25,6 +34,22 @@ class _PhoneScreenState extends State<PhoneScreen> {
 
   /// Service-level error (shown as a banner below the button).
   String? _serviceError;
+
+  LegalUrls? _legal;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLegal();
+  }
+
+  Future<void> _loadLegal() async {
+    try {
+      final urls = await LegalSettingsApi().getLegalUrls();
+      if (!mounted) return;
+      setState(() => _legal = urls);
+    } catch (_) {}
+  }
 
   @override
   void dispose() {
@@ -45,6 +70,9 @@ class _PhoneScreenState extends State<PhoneScreen> {
     if (digits.length == 11 && digits.startsWith('8')) return '+7${digits.substring(1)}';
     return null; // let backend reject anything else
   }
+
+  int get _digitCount =>
+      _controller.text.replaceAll(RegExp(r'\D'), '').length;
 
   Future<void> _requestOtp() async {
     final phone = _toE164(_controller.text);
@@ -69,6 +97,7 @@ class _PhoneScreenState extends State<PhoneScreen> {
             phone: phone,
             ttl: ttl,
             onSuccess: widget.onSuccess,
+            fromCheckout: widget.fromCheckout,
           ),
         ),
       );
@@ -103,14 +132,18 @@ class _PhoneScreenState extends State<PhoneScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final canSubmit = _digitCount >= 10 && !_loading;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Вход')),
-      // Wrap in scroll view so the content isn't clipped when the keyboard opens.
+      appBar: AppBar(
+        backgroundColor: AppColors.background,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+      ),
       body: SingleChildScrollView(
         padding: EdgeInsets.fromLTRB(
           24,
-          32,
+          24,
           24,
           MediaQuery.of(context).viewInsets.bottom + 24,
         ),
@@ -118,16 +151,24 @@ class _PhoneScreenState extends State<PhoneScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              'Введите номер телефона',
-              style: theme.textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
+              'Вход по телефону',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: AppColors.navyMuted,
               ),
             ),
             const SizedBox(height: 8),
             Text(
-              'Мы отправим SMS с кодом подтверждения',
+              'Рады вас видеть',
+              style: theme.textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: AppColors.navy,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Отправим SMS с кодом.',
               style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
+                color: AppColors.navyMuted,
               ),
             ),
             const SizedBox(height: 32),
@@ -135,13 +176,11 @@ class _PhoneScreenState extends State<PhoneScreen> {
             TextField(
               controller: _controller,
               autofocus: true,
-              keyboardType: TextInputType.number,
+              keyboardType: TextInputType.phone,
               textInputAction: TextInputAction.done,
               inputFormatters: [
                 FilteringTextInputFormatter.digitsOnly,
-                // Accept up to 11 digits to handle pasted full numbers;
-                // onChanged strips the country-code prefix automatically.
-                LengthLimitingTextInputFormatter(11),
+                _PhoneMaskFormatter(),
               ],
               decoration: InputDecoration(
                 // Inline "+7 " prefix — visually part of the phone number.
@@ -161,44 +200,27 @@ class _PhoneScreenState extends State<PhoneScreen> {
                 ),
               ),
               onChanged: (value) {
-                // If user pastes a full number (11 digits), strip the leading '7' or '8'.
-                if (value.length > 10) {
-                  final stripped = (value.startsWith('7') || value.startsWith('8'))
-                      ? value.substring(1)
-                      : value.substring(0, 10);
-                  _controller.value = TextEditingValue(
-                    text: stripped,
-                    selection: TextSelection.collapsed(offset: stripped.length),
-                  );
-                }
                 if (_fieldError != null || _serviceError != null) {
                   setState(() {
                     _fieldError = null;
                     _serviceError = null;
                   });
+                } else {
+                  setState(() {});
                 }
               },
-              onSubmitted: (_) => _requestOtp(),
+              onSubmitted: (_) {
+                if (canSubmit) _requestOtp();
+              },
             ),
-            const SizedBox(height: 24),
-            FilledButton(
-              onPressed: _loading ? null : _requestOtp,
-              style: FilledButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: _loading
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : const Text('Получить код', style: TextStyle(fontSize: 16)),
+            const SizedBox(height: 20),
+            AppButton(
+              label: 'Получить код',
+              loading: _loading,
+              variant: canSubmit
+                  ? AppButtonVariant.primary
+                  : AppButtonVariant.disabled,
+              onPressed: canSubmit ? _requestOtp : null,
             ),
             // ── Service error banner (separate from field format errors) ─
             if (_serviceError != null) ...[
@@ -206,20 +228,22 @@ class _PhoneScreenState extends State<PhoneScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 decoration: BoxDecoration(
-                  color: Colors.red.shade50,
+                  color: AppColors.error.withValues(alpha: 0.06),
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: Colors.red.shade200),
+                  border: Border.all(
+                    color: AppColors.error.withValues(alpha: 0.3),
+                  ),
                 ),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(Icons.error_outline, size: 18, color: Colors.red.shade700),
+                    Icon(Icons.error_outline, size: 18, color: AppColors.error),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         _serviceError!,
-                        style: TextStyle(
-                          color: Colors.red.shade800,
+                        style: const TextStyle(
+                          color: AppColors.error,
                           fontSize: 13,
                           height: 1.4,
                         ),
@@ -229,9 +253,102 @@ class _PhoneScreenState extends State<PhoneScreen> {
                 ),
               ),
             ],
+            const SizedBox(height: 20),
+            _LegalFooter(legal: _legal),
+            const SizedBox(height: 12),
+            AppButton(
+              label: 'Продолжить без входа',
+              variant: AppButtonVariant.secondary,
+              onPressed: () => Navigator.of(context).pop(),
+            ),
           ],
         ),
       ),
     );
   }
+}
+
+// ── Phone mask formatter ──────────────────────────────────────────────────────
+
+class _PhoneMaskFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+      TextEditingValue old, TextEditingValue val) {
+    var digits = val.text.replaceAll(RegExp(r'\D'), '');
+    // Strip leading country code from pasted numbers
+    if (digits.length == 11 &&
+        (digits.startsWith('7') || digits.startsWith('8'))) {
+      digits = digits.substring(1);
+    } else if (digits.length > 10) {
+      digits = digits.substring(0, 10);
+    }
+    final formatted = _applyMask(digits);
+    return TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
+    );
+  }
+
+  static String _applyMask(String digits) {
+    final b = StringBuffer();
+    for (var i = 0; i < digits.length; i++) {
+      if (i == 3 || i == 6 || i == 8) b.write(' ');
+      b.write(digits[i]);
+    }
+    return b.toString();
+  }
+}
+
+// ── Legal footer widget ───────────────────────────────────────────────────────
+
+class _LegalFooter extends StatelessWidget {
+  const _LegalFooter({required this.legal});
+  final LegalUrls? legal;
+
+  @override
+  Widget build(BuildContext context) {
+    final legal = this.legal;
+    return Text.rich(
+      TextSpan(
+        style: const TextStyle(
+          color: AppColors.navyMuted,
+          fontSize: 12,
+          height: 1.5,
+        ),
+        children: [
+          const TextSpan(text: 'Продолжая, вы принимаете '),
+          if (legal != null && legal.termsUrl.isNotEmpty)
+            _linkSpan('условия сервиса', legal.termsUrl, context)
+          else
+            const TextSpan(text: 'условия сервиса'),
+          const TextSpan(text: ' и '),
+          if (legal != null && legal.privacyUrl.isNotEmpty)
+            _linkSpan('политику конфиденциальности', legal.privacyUrl, context)
+          else
+            const TextSpan(text: 'политику конфиденциальности'),
+          const TextSpan(text: '.'),
+        ],
+      ),
+      textAlign: TextAlign.center,
+    );
+  }
+
+  InlineSpan _linkSpan(String text, String url, BuildContext context) =>
+      TextSpan(
+        text: text,
+        style: const TextStyle(
+          color: AppColors.purple,
+          decoration: TextDecoration.underline,
+          decorationColor: AppColors.purple,
+        ),
+        recognizer: TapGestureRecognizer()
+          ..onTap = () async {
+            final uri = Uri.tryParse(url);
+            if (uri != null) {
+              try {
+                await launchUrl(uri, mode: LaunchMode.externalApplication);
+              } catch (_) {}
+            }
+          },
+      );
 }

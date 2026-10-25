@@ -372,6 +372,7 @@ class _SummaryBar extends StatelessWidget {
       nav.push(
         MaterialPageRoute(
           builder: (_) => PhoneScreen(
+            fromCheckout: true,
             // After login: PhoneScreen pops itself, CheckoutScreen is already
             // pushed on the stack → user lands directly on checkout.
             onSuccess: () => nav.push(
