@@ -9,6 +9,7 @@ import '../providers/market_provider.dart';
 import '../providers/wishlist_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/product_image.dart';
+import '../widgets/ui/empty_state.dart';
 import 'product_detail_screen.dart';
 
 class ProductCatalogScreen extends StatefulWidget {
@@ -524,45 +525,82 @@ class _CatalogLoadError extends StatelessWidget {
 
 class _EmptyCatalog extends StatelessWidget {
   const _EmptyCatalog({required this.onReset});
-
   final VoidCallback onReset;
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) => SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-        child: ConstrainedBox(
-          constraints: BoxConstraints(minHeight: constraints.maxHeight - 32),
-          child: Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(
-                  Icons.search_off_rounded,
-                  size: 48,
-                  color: AppColors.purple,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Товары не найдены',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                const SizedBox(height: 4),
-                const Text(
-                  'Измените запрос или сбросьте выбранные фильтры.',
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 12),
-                FilledButton(
-                  onPressed: onReset,
-                  child: const Text('Сбросить фильтры'),
-                ),
-              ],
-            ),
+    final provider = context.watch<MarketProvider>();
+    final popular = provider.featuredProducts.take(4).toList();
+
+    return SingleChildScrollView(
+      child: EmptyState(
+        headline: 'Ничего не найдено',
+        body: 'Попробуйте другое название или сбросьте фильтры.',
+        actionLabel: 'Сбросить фильтры',
+        onAction: onReset,
+        bottom: popular.isEmpty
+            ? null
+            : _SearchSuggestions(products: popular),
+      ),
+    );
+  }
+}
+
+class _SearchSuggestions extends StatelessWidget {
+  const _SearchSuggestions({required this.products});
+  final List<Product> products;
+
+  @override
+  Widget build(BuildContext context) {
+    final market = context.watch<MarketProvider>();
+    final wishlist = context.watch<WishlistProvider>();
+    final auth = context.read<AuthProvider>();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Возможно, вам понравится',
+          style: TextStyle(
+            fontFamily: 'NunitoSans',
+            fontSize: 18,
+            fontWeight: FontWeight.w800,
+            color: AppColors.navy,
           ),
         ),
-      ),
+        const SizedBox(height: AppSpacing.md),
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            mainAxisExtent: 272,
+            crossAxisSpacing: 10,
+            mainAxisSpacing: 10,
+          ),
+          itemCount: products.length,
+          itemBuilder: (context, i) {
+            final p = products[i];
+            final canAdd = p.inStock &&
+                market.cartQuantityFor(p.id) < p.stockQuantity;
+            return CatalogProductCard(
+              product: p,
+              isFavorite: wishlist.isFavorite(p.id),
+              onFavorite: () async {
+                final token = await auth.getAccessToken();
+                wishlist.toggle(p, accessToken: token);
+              },
+              onAdd: canAdd ? () => market.addToCart(p) : null,
+              onOpen: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ProductDetailScreen(product: p),
+                ),
+              ),
+            );
+          },
+        ),
+      ],
     );
   }
 }
