@@ -13,11 +13,17 @@ class OtpScreen extends StatefulWidget {
     required this.phone,
     required this.ttl,
     this.onSuccess,
+    this.returnResultOnSuccess = false,
   });
 
   final String phone;
   final int ttl;
   final VoidCallback? onSuccess;
+
+  /// When true: verifies OTP and pops with `true` without updating AuthProvider
+  /// state or calling [onSuccess]. Use for identity confirmation flows (e.g.
+  /// account deletion) where a full login side-effect is undesirable.
+  final bool returnResultOnSuccess;
 
   @override
   State<OtpScreen> createState() => _OtpScreenState();
@@ -86,10 +92,16 @@ class _OtpScreenState extends State<OtpScreen> {
       _error = null;
     });
     try {
-      await context.read<AuthProvider>().login(widget.phone, code);
-      if (!mounted) return;
-      widget.onSuccess?.call();
-      Navigator.of(context).pop(true);
+      if (widget.returnResultOnSuccess) {
+        await context.read<AuthProvider>().verifyOtpSilent(widget.phone, code);
+        if (!mounted) return;
+        Navigator.of(context).pop(true);
+      } else {
+        await context.read<AuthProvider>().login(widget.phone, code);
+        if (!mounted) return;
+        widget.onSuccess?.call();
+        Navigator.of(context).pop(true);
+      }
     } on DioException catch (e) {
       if (!mounted) return;
       final detail = _detail(e);

@@ -10,11 +10,19 @@ import '../providers/orders_provider.dart';
 import '../providers/wishlist_provider.dart';
 import '../services/legal_settings_api.dart';
 import '../theme/app_theme.dart';
+import '../widgets/ui/app_button.dart';
 import 'auth/otp_screen.dart';
 
-// Statuses that indicate an order is actively being processed and cannot be
-// cancelled by the backend during account deletion.
-const _kBlockingStatuses = {'confirmed', 'payment_received', 'shipped'};
+// Orders that block account deletion on the client side.
+// pending_payment is included because cancelling an in-flight payment without
+// user awareness is disruptive; confirmed/payment_received/shipped cannot be
+// cancelled by the backend at all.
+const _kBlockingStatuses = {
+  'pending_payment',
+  'confirmed',
+  'payment_received',
+  'shipped',
+};
 
 class DeleteAccountScreen extends StatefulWidget {
   const DeleteAccountScreen({super.key});
@@ -86,11 +94,16 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
     if (!mounted) return;
     final confirmed = await Navigator.push<bool>(
       context,
-      MaterialPageRoute(builder: (_) => OtpScreen(phone: phone, ttl: ttl)),
+      MaterialPageRoute(
+        builder: (_) => OtpScreen(
+          phone: phone,
+          ttl: ttl,
+          returnResultOnSuccess: true,
+        ),
+      ),
     );
     if (!mounted || confirmed != true) return;
 
-    // OtpScreen called auth.login() → fresh tokens; now delete
     await _doDelete();
   }
 
@@ -145,16 +158,16 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
       appBar: AppBar(automaticallyImplyLeading: false),
       body: Center(
         child: Padding(
-          padding: const EdgeInsets.all(32),
+          padding: const EdgeInsets.all(AppSpacing.x3l),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               const Icon(
                 Icons.check_circle_outline_rounded,
                 size: 72,
-                color: Color(0xFF23804A),
+                color: AppColors.success,
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: AppSpacing.xl),
               Text(
                 'Аккаунт удалён',
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
@@ -162,23 +175,18 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
                       color: AppColors.navy,
                     ),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: AppSpacing.sm),
               const Text(
                 'Ваши данные будут удалены в течение 30 дней.',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: AppColors.navyMuted, height: 1.4),
+                style: TextStyle(
+                    color: AppColors.navyMuted, fontSize: 14, height: 1.4),
               ),
-              const SizedBox(height: 32),
-              FilledButton(
-                onPressed: () =>
-                    Navigator.of(context).popUntil((route) => route.isFirst),
-                style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 32, vertical: 14),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
-                ),
-                child: const Text('На главную'),
+              const SizedBox(height: AppSpacing.x3l),
+              AppButton(
+                label: 'На главную',
+                onPressed: () => Navigator.of(context)
+                    .popUntil((route) => route.isFirst),
               ),
             ],
           ),
@@ -194,8 +202,8 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
     final auth = context.watch<AuthProvider>();
     final bonusBalance = auth.user?.bonusBalance ?? 0;
 
-    final hasBlockingOrders = orders.orders
-        .any((o) => _kBlockingStatuses.contains(o.status));
+    final hasBlockingOrders =
+        orders.orders.any((o) => _kBlockingStatuses.contains(o.status));
     final canProceed = !orders.loading && !hasBlockingOrders && !_requesting;
 
     return Scaffold(
@@ -206,7 +214,12 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
         ),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.xl,
+          AppSpacing.x2l,
+          AppSpacing.xl,
+          AppSpacing.x3l,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -216,7 +229,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
               size: 56,
               color: AppColors.navyMuted,
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.lg),
             Text(
               'Вы уверены?',
               textAlign: TextAlign.center,
@@ -225,17 +238,14 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
                     color: AppColors.navy,
                   ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.sm),
             const Text(
               'После подтверждения аккаунт будет удалён. Это действие необратимо.',
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: AppColors.navyMuted,
-                fontSize: 14,
-                height: 1.4,
-              ),
+                  color: AppColors.navyMuted, fontSize: 14, height: 1.4),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: AppSpacing.x2l),
 
             // Warnings
             if (bonusBalance > 0) ...[
@@ -245,7 +255,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
                 message:
                     'Вы потеряете ${_fmt(bonusBalance)} ₸ YoCoin-бонусов.',
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: AppSpacing.sm),
             ],
             if (orders.loading)
               _WarningCard(
@@ -257,11 +267,11 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
             else if (hasBlockingOrders)
               _WarningCard(
                 icon: Icons.local_shipping_outlined,
-                color: Colors.red.shade700,
+                color: AppColors.error,
                 message:
-                    'Есть активные заказы. Дождитесь их доставки или отмены перед удалением.',
+                    'Есть активные заказы. Дождитесь их доставки или отмены.',
               ),
-            const SizedBox(height: 20),
+            const SizedBox(height: AppSpacing.xl),
 
             // Privacy policy link
             if (_legal?.privacyUrl.isNotEmpty == true)
@@ -278,65 +288,43 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
                   ),
                 ),
               ),
-            const SizedBox(height: 32),
+            const SizedBox(height: AppSpacing.x3l),
 
             // Error
             if (_error != null) ...[
               Container(
                 padding: const EdgeInsets.symmetric(
-                    horizontal: 14, vertical: 10),
+                    horizontal: AppSpacing.md, vertical: AppSpacing.sm + 2),
                 decoration: BoxDecoration(
-                  color: Colors.red.shade50,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: Colors.red.shade200),
+                  color: AppColors.error.withValues(alpha: 0.07),
+                  borderRadius: BorderRadius.circular(AppRadii.card),
+                  border: Border.all(
+                      color: AppColors.error.withValues(alpha: 0.25)),
                 ),
                 child: Text(
                   _error!,
-                  style: TextStyle(
-                      color: Colors.red.shade700, fontSize: 13, height: 1.4),
+                  style: const TextStyle(
+                      color: AppColors.error, fontSize: 13, height: 1.4),
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.lg),
             ],
 
             // Primary: keep account
-            FilledButton(
+            AppButton(
+              label: 'Оставить аккаунт',
               onPressed: () => Navigator.pop(context),
-              style: FilledButton.styleFrom(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-              ),
-              child: const Text('Оставить аккаунт'),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: AppSpacing.sm),
 
-            // Secondary: destructive action
-            OutlinedButton(
+            // Secondary: destructive confirmation
+            AppButton(
+              label: 'Продолжить удаление',
+              variant: canProceed
+                  ? AppButtonVariant.secondary
+                  : AppButtonVariant.disabled,
+              loading: _requesting,
               onPressed: canProceed ? _startDeletion : null,
-              style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.red.shade700,
-                side: BorderSide(
-                  color: canProceed
-                      ? Colors.red.shade700
-                      : Colors.red.shade200,
-                ),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-              ),
-              child: _requesting
-                  ? SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.red.shade700,
-                      ),
-                    )
-                  : const Text('Продолжить удаление'),
             ),
           ],
         ),
@@ -363,10 +351,11 @@ class _WarningCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md, vertical: AppSpacing.sm + 2),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.07),
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(AppRadii.card),
         border: Border.all(color: color.withValues(alpha: 0.25)),
       ),
       child: Row(
@@ -380,7 +369,7 @@ class _WarningCard extends StatelessWidget {
                       strokeWidth: 2, color: color),
                 )
               : Icon(icon, size: 18, color: color),
-          const SizedBox(width: 10),
+          const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Text(
               message,

@@ -78,6 +78,13 @@ class AuthProvider with ChangeNotifier {
 
   Future<int> requestOtp(String phone) => _auth.requestOtp(phone);
 
+  // Verifies the OTP and stores fresh tokens without touching _user / _state.
+  // Used when OTP is needed only for identity confirmation (e.g. account deletion)
+  // so the UI does not flicker through an auth-state cycle.
+  Future<void> verifyOtpSilent(String phone, String code) async {
+    await _auth.verifyOtp(phone, code);
+  }
+
   Future<void> login(String phone, String code) async {
     _user = await _auth.verifyOtp(phone, code);
     _state = AuthState.authenticated;
