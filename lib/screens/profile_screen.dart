@@ -32,6 +32,56 @@ class ProfileScreen extends StatelessWidget {
       return const Scaffold(backgroundColor: _kProfileBg);
     }
 
+    if (auth.state == AuthState.sessionExpired) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Профиль',
+              style: TextStyle(fontWeight: FontWeight.w700)),
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.lock_outline_rounded,
+                    size: 64, color: AppColors.navyMuted),
+                const SizedBox(height: 16),
+                Text(
+                  'Сессия истекла',
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.navy,
+                      ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Войдите снова, чтобы увидеть заказы и бонусы.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: AppColors.navyMuted, height: 1.4),
+                ),
+                const SizedBox(height: 28),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const PhoneScreen()),
+                    ),
+                    style: FilledButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: const Text('Войти', style: TextStyle(fontSize: 16)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     if (auth.state == AuthState.sessionError) {
       return Scaffold(
         appBar: AppBar(

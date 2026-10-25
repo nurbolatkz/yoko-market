@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../models/user_profile.dart';
 import '../services/auth_service.dart';
 
-enum AuthState { unknown, guest, authenticated, sessionError }
+enum AuthState { unknown, guest, authenticated, sessionError, sessionExpired }
 
 class AuthProvider with ChangeNotifier {
   AuthProvider({AuthService? authService})
@@ -39,9 +39,12 @@ class AuthProvider with ChangeNotifier {
       final newToken = await _auth.tryRefresh();
       if (newToken == null) {
         // _doRefresh clears tokens on 401; on network error tokens are preserved.
-        // Check which case this is so we can offer a retry instead of dropping to guest.
+        // sessionExpired = 401 (tokens gone, must re-login).
+        // sessionError   = network failure (tokens intact, can retry).
         final stillHasSession = await _auth.hasSession();
-        _state = stillHasSession ? AuthState.sessionError : AuthState.guest;
+        _state = stillHasSession
+            ? AuthState.sessionError
+            : AuthState.sessionExpired;
         notifyListeners();
         return;
       }
@@ -63,7 +66,9 @@ class AuthProvider with ChangeNotifier {
     if (newToken == null) {
       final stillHasSession = await _auth.hasSession();
       if (!stillHasSession) _user = null;
-      _state = stillHasSession ? AuthState.sessionError : AuthState.guest;
+      _state = stillHasSession
+          ? AuthState.sessionError
+          : AuthState.sessionExpired;
       notifyListeners();
     }
     return newToken;
