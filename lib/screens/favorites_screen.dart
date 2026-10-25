@@ -7,11 +7,13 @@ import '../providers/market_provider.dart';
 import '../providers/wishlist_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/product_image.dart';
+import '../widgets/ui/empty_state.dart';
 import 'auth/phone_screen.dart';
 import 'product_detail_screen.dart';
 
 class FavoritesScreen extends StatelessWidget {
-  const FavoritesScreen({super.key});
+  const FavoritesScreen({super.key, this.onGoToCatalog});
+  final VoidCallback? onGoToCatalog;
 
   @override
   Widget build(BuildContext context) {
@@ -53,6 +55,7 @@ class FavoritesScreen extends StatelessWidget {
         products: products,
         loading: wishlist.loading,
         isGuest: !auth.isAuthenticated,
+        onGoToCatalog: onGoToCatalog,
       ),
     );
   }
@@ -63,11 +66,13 @@ class _Body extends StatelessWidget {
     required this.products,
     required this.loading,
     required this.isGuest,
+    this.onGoToCatalog,
   });
 
   final List<Product> products;
   final bool loading;
   final bool isGuest;
+  final VoidCallback? onGoToCatalog;
 
   @override
   Widget build(BuildContext context) {
@@ -78,7 +83,25 @@ class _Body extends StatelessWidget {
     }
 
     if (products.isEmpty) {
-      return _EmptyState(isGuest: isGuest);
+      return SingleChildScrollView(
+        child: EmptyState(
+          title: 'Избранное',
+          icon: const Icon(
+            Icons.favorite_border_rounded,
+            size: 56,
+            color: AppColors.purple,
+          ),
+          headline: 'Сохраните любимые товары',
+          body: 'Нажмите на сердце в карточке товара, чтобы быстро найти его позже.',
+          actionLabel: isGuest ? 'Войти' : 'Перейти в каталог',
+          onAction: isGuest
+              ? () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const PhoneScreen()),
+                  )
+              : onGoToCatalog,
+        ),
+      );
     }
 
     return GridView.builder(
@@ -382,53 +405,3 @@ class _OutOfStockBadge extends StatelessWidget {
   }
 }
 
-class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.isGuest});
-  final bool isGuest;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(
-              Icons.favorite_border_rounded,
-              size: 72,
-              color: AppColors.purple,
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Здесь пока пусто',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w800,
-                color: AppColors.navy,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              isGuest
-                  ? 'Войдите, чтобы сохранять товары\nна всех устройствах'
-                  : 'Нажмите ♡ на товаре, чтобы добавить его в избранное',
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: AppColors.navyMuted, height: 1.5),
-            ),
-            if (isGuest) ...[
-              const SizedBox(height: 24),
-              FilledButton(
-                onPressed: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const PhoneScreen()),
-                ),
-                child: const Text('Войти'),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-}

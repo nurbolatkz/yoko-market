@@ -36,7 +36,7 @@ class _MainScreenState extends State<MainScreen> {
       ),
       const ProductCatalogScreen(),
       CartScreen(onGoToCatalog: () => setState(() => _currentIndex = 1)),
-      const FavoritesScreen(),
+      FavoritesScreen(onGoToCatalog: () => setState(() => _currentIndex = 1)),
       const ProfileScreen(),
     ];
 
