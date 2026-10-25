@@ -17,7 +17,7 @@
 | Метод | Путь | Авторизация | Используется в | Статус |
 |---|---|---|---|---|
 | GET | `/my-orders` | Bearer | OrdersScreen, ProfileScreen | ready |
-| GET | `/my-orders/{id}` | Bearer | OrderDetailScreen, ReorderScreen | partial |
+| GET | `/my-orders/{id}` | Bearer | OrderDetailScreen, ReorderScreen | partial (нет variant_id) |
 | GET | `/products/{id}` | нет | ReorderScreen (параллельные запросы) | ready |
 
 > Добавляй строку в таблицу при каждом новом эндпоинте. Ниже размещай полное описание секцией.
@@ -61,10 +61,42 @@
 ]
 ```
 
-> ⚠️ **partial**: поле `product_id` в элементах `items` присутствует с момента
-> запуска `checkout_service v2`. Заказы, созданные до этого обновления, содержат
-> только `{name, qty, price, brand}` без `product_id`. ReorderScreen обрабатывает
-> это: позиции без `product_id` показываются как «Нет в наличии».
+> ⚠️ **partial**: поле `product_id` присутствует с момента запуска checkout_service v2.
+> Старые заказы содержат только `{name, qty, price, brand}`.
+>
+> ❌ **Отсутствует `variant_id`** — см. требование ниже.
+
+---
+
+### ТРЕБОВАНИЕ БЭКЕНДУ: добавить `variant_id` в ответ /my-orders и /my-orders/{id}
+
+**Статус:** awaiting-backend  
+**Затрагивает:** `GET /my-orders`, `GET /my-orders/{id}`
+
+В массиве `items` каждого заказа необходимо возвращать:
+
+```json
+{
+  "product_id": "uuid-основного-товара-или-группы",
+  "variant_id": "uuid-конкретного-варианта-размера",
+  "name": "Подгузники YokoSun",
+  "size": "M",
+  "qty": 2,
+  "price": 5990,
+  "brand": "yoko"
+}
+```
+
+**Почему:** сейчас `product_id` в JSONB хранит UUID конкретной строки `Product`
+(которая и является вариантом размера), что достаточно для ReorderScreen.
+Однако явный `variant_id` + `size` позволит:
+- надёжно определять размер без парсинга имени (который ломается при нестандартных названиях);
+- корректно работать при будущей нормализации схемы (отдельная таблица вариантов);
+- избавиться от поиска-по-имени в _searchFallback.
+
+**Текущий workaround в приложении:**
+- новые заказы (есть `product_id`): `GET /products/{product_id}` возвращает нужный вариант напрямую, т.к. `product_id` = строка конкретного размера;
+- старые заказы (нет `product_id`): поиск по `GET /products?search=<имя без размера>`, затем парсинг размера из имени через суффиксы (S/M/L/XL/XXL/XXXL/NB/ONE); при неоднозначности показывается ChipGroup для ручного выбора.
 
 #### Коды ошибок
 | Код | Тело | Когда |
