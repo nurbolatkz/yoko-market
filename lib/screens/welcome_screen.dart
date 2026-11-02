@@ -1,11 +1,23 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../theme/app_theme.dart';
 
-/// Shown once after install. `MainScreen` is in the widget tree underneath so
-/// data loading starts in parallel — the animation never waits for the API.
+/// Splash animation shown on every cold start. `MainScreen` sits underneath
+/// in the widget tree so data loading starts in parallel — the animation never
+/// waits for the API. Tap anywhere to skip.
+///
+/// Motion timeline (one controller, [_total] long):
+///   0.00–0.30  halo grows, "Y" badge pops in with a spring + tilt
+///   0.18–0.64  «Сәлем!» is drawn stroke by stroke with a glowing pen tip
+///   0.60–0.80  "Yo Market" wordmark slides up and fades in
+///   0.66–0.82  yellow swoosh under the wordmark
+///   0.86–1.00  everything zooms through and fades, revealing the app
+///
+/// Haptics follow the motion: a light tap when the badge lands, a tick per
+/// letter while the pen writes, and a medium tap when the wordmark settles.
 class WelcomeOverlay extends StatefulWidget {
   const WelcomeOverlay({super.key, required this.onDone});
 
@@ -16,156 +28,344 @@ class WelcomeOverlay extends StatefulWidget {
 }
 
 class _WelcomeOverlayState extends State<WelcomeOverlay>
-    with TickerProviderStateMixin {
-  late final AnimationController _drawCtrl;
-  late final AnimationController _textCtrl;
-  late final AnimationController _exitCtrl;
+    with SingleTickerProviderStateMixin {
+  static const _total = Duration(milliseconds: 2800);
+
+  // Phase intervals on the 0→1 master timeline.
+  static const _halo = Interval(0.00, 0.34, curve: Curves.easeOutCubic);
+  static const _badge = Interval(0.02, 0.30, curve: Curves.elasticOut);
+  static const _badgeTilt = Interval(0.02, 0.26, curve: Curves.easeOutBack);
+  static const _draw = Interval(0.18, 0.64, curve: Curves.easeInOut);
+  static const _wordmark = Interval(0.60, 0.80, curve: Curves.easeOutCubic);
+  static const _swoosh = Interval(0.66, 0.82, curve: Curves.easeInOutCubic);
+  static const _exit = Interval(0.86, 1.00, curve: Curves.easeInCubic);
+
+  static const _badgeHapticAt = 0.06;
+  static const _wordmarkHapticAt = 0.66;
+
+  late final AnimationController _ctrl;
+  late final List<double> _letterStarts = _SalemPainter.letterStartFractions();
 
   bool _started = false;
+  bool _finished = false;
+  bool _badgeBuzzed = false;
+  bool _wordmarkBuzzed = false;
+  int _lettersBuzzed = 0;
 
   @override
   void initState() {
     super.initState();
-    _drawCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1300),
-    );
-    _textCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 500),
-    );
-    _exitCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 380),
-    );
+    _ctrl = AnimationController(vsync: this, duration: _total)
+      ..addListener(_onTick);
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (!_started) {
-      _started = true;
-      final reducedMotion = MediaQuery.of(context).disableAnimations;
-      if (reducedMotion) {
-        _drawCtrl.value = 1.0;
-        _textCtrl.value = 1.0;
-        Future.microtask(() { if (mounted) widget.onDone(); });
-      } else {
-        _play();
-      }
+    if (_started) return;
+    _started = true;
+    if (MediaQuery.of(context).disableAnimations) {
+      Future.microtask(_finish);
+    } else {
+      _play();
     }
   }
 
   Future<void> _play() async {
-    // Safety: dismiss after 4 s even if animation stalls (low-end devices, emulators)
-    Future.delayed(const Duration(seconds: 4), () {
-      if (mounted) widget.onDone();
-    });
+    // Safety: dismiss even if the ticker stalls (low-end devices, emulators).
+    Future.delayed(_total + const Duration(seconds: 2), _finish);
     try {
-      await _drawCtrl.forward();
-      _textCtrl.forward();
-      await Future.delayed(const Duration(milliseconds: 400));
-      await _exitCtrl.forward();
-    } catch (_) {
+      await _ctrl.forward().orCancel;
+    } on TickerCanceled {
       return;
     }
-    if (mounted) widget.onDone();
+    _finish();
+  }
+
+  void _skip() {
+    if (_finished || _ctrl.value >= _exit.begin) return;
+    // Jump straight to the exit phase and play it a little faster.
+    _ctrl.value = _exit.begin;
+    _ctrl.animateTo(
+      1.0,
+      duration: _total * (1 - _exit.begin) * 0.7,
+    ).whenComplete(_finish);
+  }
+
+  void _finish() {
+    if (_finished || !mounted) return;
+    _finished = true;
+    widget.onDone();
+  }
+
+  void _onTick() {
+    final t = _ctrl.value;
+    if (!_badgeBuzzed && t >= _badgeHapticAt) {
+      _badgeBuzzed = true;
+      HapticFeedback.lightImpact();
+    }
+    final drawn = _draw.transform(t);
+    while (_lettersBuzzed < _letterStarts.length &&
+        drawn > 0 &&
+        drawn >= _letterStarts[_lettersBuzzed]) {
+      _lettersBuzzed++;
+      HapticFeedback.selectionClick();
+    }
+    if (!_wordmarkBuzzed && t >= _wordmarkHapticAt) {
+      _wordmarkBuzzed = true;
+      HapticFeedback.mediumImpact();
+    }
   }
 
   @override
   void dispose() {
-    _drawCtrl.dispose();
-    _textCtrl.dispose();
-    _exitCtrl.dispose();
+    _ctrl.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _exitCtrl,
-      builder: (context, child) => Opacity(
-        opacity: 1.0 - _exitCtrl.value,
-        child: child,
-      ),
-      child: Scaffold(
-        backgroundColor: AppColors.background,
-        body: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Drawn "Сәлем!" via vector path strokes
-              AnimatedBuilder(
-                animation: _drawCtrl,
-                builder: (context, _) => CustomPaint(
-                  size: const Size(272, 72),
-                  painter: _SalemPainter(
-                    progress: Curves.easeInOut.transform(_drawCtrl.value),
-                    color: AppColors.purple,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              // "Yoko Market" logo fades in after drawing is complete
-              AnimatedBuilder(
-                animation: _textCtrl,
-                builder: (context, child) => Opacity(
-                  opacity: Curves.easeOut.transform(_textCtrl.value),
-                  child: child,
-                ),
-                child: RichText(
-                  text: const TextSpan(
-                    style: TextStyle(
-                      fontFamily: 'Roboto',
-                      letterSpacing: -0.5,
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: _skip,
+      child: AnimatedBuilder(
+        animation: _ctrl,
+        builder: (context, _) {
+          final t = _ctrl.value;
+          final exit = _exit.transform(t);
+          final halo = _halo.transform(t);
+          final badge = _badge.transform(t);
+          final tilt = 1 - _badgeTilt.transform(t);
+          final draw = _draw.transform(t);
+          final word = _wordmark.transform(t);
+          final swoosh = _swoosh.transform(t);
+
+          return Opacity(
+            opacity: 1 - exit,
+            // Material (not ColoredBox) gives Text a proper DefaultTextStyle;
+            // SizedBox.expand makes the overlay cover the screen even though
+            // the parent Stack hands it loose constraints.
+            child: SizedBox.expand(
+              child: Material(
+                color: AppColors.background,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    // Soft purple halo behind the content.
+                    Transform.scale(
+                      scale: 0.5 + 0.7 * halo + 0.6 * exit,
+                      child: Opacity(
+                        opacity: halo,
+                        child: Container(
+                          width: 360,
+                          height: 360,
+                          decoration: const BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: RadialGradient(
+                              colors: [
+                                AppColors.purpleSoft,
+                                AppColors.background,
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
-                    children: [
-                      TextSpan(
-                        text: 'Y',
-                        style: TextStyle(
-                          color: AppColors.purple,
-                          fontSize: 36,
-                          fontWeight: FontWeight.w900,
-                        ),
+                    Transform.scale(
+                      scale: 1 + 0.12 * exit,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Transform.rotate(
+                            angle: -0.35 * tilt,
+                            child: Transform.scale(
+                              scale: badge,
+                              child: const _Badge(),
+                            ),
+                          ),
+                          const SizedBox(height: AppSpacing.x2l),
+                          CustomPaint(
+                            size: const Size(272, 72),
+                            painter: _SalemPainter(
+                              progress: draw,
+                              color: AppColors.purple,
+                              tipColor: AppColors.yellow,
+                            ),
+                          ),
+                          const SizedBox(height: AppSpacing.xl),
+                          Opacity(
+                            opacity: word,
+                            child: Transform.translate(
+                              offset: Offset(0, 18 * (1 - word)),
+                              child: const _Wordmark(),
+                            ),
+                          ),
+                          const SizedBox(height: AppSpacing.sm),
+                          CustomPaint(
+                            size: const Size(140, 14),
+                            painter: _SwooshPainter(
+                              progress: swoosh,
+                              color: AppColors.yellow,
+                            ),
+                          ),
+                        ],
                       ),
-                      TextSpan(
-                        text: 'o',
-                        style: TextStyle(
-                          color: AppColors.yellow,
-                          fontSize: 36,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                      TextSpan(
-                        text: ' Market',
-                        style: TextStyle(
-                          color: AppColors.navy,
-                          fontSize: 28,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
-            ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+/// Yellow circle with a purple "Y" — the app's header logo mark, enlarged.
+class _Badge extends StatelessWidget {
+  const _Badge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 72,
+      height: 72,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: AppColors.yellow,
+        shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.purple.withValues(alpha: 0.18),
+            blurRadius: 24,
+            offset: const Offset(0, 10),
           ),
+        ],
+      ),
+      child: const Text(
+        'Y',
+        style: TextStyle(
+          color: AppColors.purple,
+          fontSize: 42,
+          fontWeight: FontWeight.w900,
+          height: 1,
         ),
       ),
     );
   }
 }
 
-/// Draws the word «Сәлем!» stroke by stroke using PathMetrics.
-///
-/// Paths are defined in a 272 × 72 viewBox. Each [moveTo] starts a new
-/// contour (stroke); [progress] drives the total drawn length from 0 → 1
-/// across all contours in order, giving a genuine pen-on-paper effect.
-class _SalemPainter extends CustomPainter {
-  const _SalemPainter({required this.progress, required this.color});
+class _Wordmark extends StatelessWidget {
+  const _Wordmark();
+
+  @override
+  Widget build(BuildContext context) {
+    return RichText(
+      text: const TextSpan(
+        style: TextStyle(letterSpacing: -0.5),
+        children: [
+          TextSpan(
+            text: 'Y',
+            style: TextStyle(
+              color: AppColors.purple,
+              fontSize: 36,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          TextSpan(
+            text: 'o',
+            style: TextStyle(
+              color: AppColors.yellow,
+              fontSize: 36,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          TextSpan(
+            text: ' Market',
+            style: TextStyle(
+              color: AppColors.navy,
+              fontSize: 28,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A short hand-drawn underline that sweeps left → right.
+class _SwooshPainter extends CustomPainter {
+  const _SwooshPainter({required this.progress, required this.color});
 
   final double progress;
   final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (progress <= 0) return;
+    final path = Path()
+      ..moveTo(4, size.height * 0.7)
+      ..quadraticBezierTo(
+        size.width * 0.5,
+        -size.height * 0.1,
+        size.width - 4,
+        size.height * 0.55,
+      );
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 5
+      ..strokeCap = StrokeCap.round
+      ..style = PaintingStyle.stroke;
+    for (final m in path.computeMetrics()) {
+      canvas.drawPath(m.extractPath(0, m.length * progress), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_SwooshPainter old) =>
+      old.progress != progress || old.color != color;
+}
+
+/// Draws the word «Сәлем!» stroke by stroke using PathMetrics.
+///
+/// Paths are defined in a 272 × 72 viewBox. Each [Path.moveTo] starts a new
+/// contour (stroke); [progress] drives the total drawn length from 0 → 1
+/// across all contours in order, giving a pen-on-paper effect. While drawing,
+/// a glowing pen tip rides on the end of the stroke.
+class _SalemPainter extends CustomPainter {
+  const _SalemPainter({
+    required this.progress,
+    required this.color,
+    required this.tipColor,
+  });
+
+  final double progress;
+  final Color color;
+  final Color tipColor;
+
+  /// Number of contours (strokes) per glyph, in drawing order:
+  /// С, ə, л, е, м, !
+  static const _contoursPerLetter = [1, 2, 1, 2, 1, 2];
+
+  /// Fraction of the total stroke length (0–1) at which each letter begins.
+  /// Used to fire one haptic tick per letter as the pen reaches it.
+  static List<double> letterStartFractions() {
+    final metrics =
+        _buildPath(const Size(272, 72)).computeMetrics().toList();
+    final total = metrics.fold<double>(0, (s, m) => s + m.length);
+    final starts = <double>[];
+    var contour = 0;
+    var len = 0.0;
+    for (final count in _contoursPerLetter) {
+      starts.add(len / total);
+      for (var i = 0; i < count && contour < metrics.length; i++) {
+        len += metrics[contour++].length;
+      }
+    }
+    return starts;
+  }
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -178,24 +378,41 @@ class _SalemPainter extends CustomPainter {
       ..strokeJoin = StrokeJoin.round
       ..style = PaintingStyle.stroke;
 
-    final path = _buildPath(size);
-    final metrics = path.computeMetrics().toList();
-
+    final metrics = _buildPath(size).computeMetrics().toList();
     final totalLen = metrics.fold<double>(0, (s, m) => s + m.length);
     final target = totalLen * progress;
 
     var drawn = 0.0;
+    Offset? tip;
     for (final m in metrics) {
       if (drawn >= target) break;
       final end = math.min(target - drawn, m.length);
       canvas.drawPath(m.extractPath(0, end), paint);
+      tip = m.getTangentForOffset(end)?.position;
       drawn += m.length;
+    }
+
+    // Pen tip: fades out over the last 8 % of the drawing.
+    if (tip != null && progress < 1) {
+      final fade = ((1 - progress) / 0.08).clamp(0.0, 1.0);
+      canvas.drawCircle(
+        tip,
+        9,
+        Paint()
+          ..color = tipColor.withValues(alpha: 0.45 * fade)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6),
+      );
+      canvas.drawCircle(
+        tip,
+        4,
+        Paint()..color = tipColor.withValues(alpha: fade),
+      );
     }
   }
 
   /// All coordinates in a 272 × 72 viewBox.
   /// Cap-height ≈ y=8, baseline ≈ y=64.
-  Path _buildPath(Size size) {
+  static Path _buildPath(Size size) {
     final sx = size.width / 272.0;
     final sy = size.height / 72.0;
 
@@ -250,5 +467,7 @@ class _SalemPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_SalemPainter old) =>
-      old.progress != progress || old.color != color;
+      old.progress != progress ||
+      old.color != color ||
+      old.tipColor != tipColor;
 }
