@@ -32,33 +32,31 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // Read the prefs before the first frame so _StartScreen never renders a blank
   // loading scaffold — the decision is synchronous from the widget's perspective.
-  bool welcomeShown = false;
+  // The welcome animation plays on every cold start; onboarding only once.
+  final showWelcome = !_isRunningUnderTest();
   bool onboardingShown = false;
   if (!_isRunningUnderTest()) {
     try {
       final prefs = await SharedPreferences.getInstance()
           .timeout(const Duration(seconds: 2));
-      welcomeShown = prefs.getBool('welcome_shown') ?? false;
-      if (!welcomeShown) await prefs.setBool('welcome_shown', true);
       onboardingShown = prefs.getBool('onboarding_shown') ?? false;
     } catch (_) {
-      welcomeShown = true; // on failure, skip the animation
       onboardingShown = true;
     }
   }
-  runApp(YokoMarketApp(welcomeShown: welcomeShown, onboardingShown: onboardingShown));
+  runApp(YokoMarketApp(showWelcome: showWelcome, onboardingShown: onboardingShown));
 }
 
 class YokoMarketApp extends StatelessWidget {
   const YokoMarketApp({
     super.key,
     this.marketProvider,
-    this.welcomeShown = true,
+    this.showWelcome = false,
     this.onboardingShown = true,
   });
 
   final MarketProvider? marketProvider;
-  final bool welcomeShown;
+  final bool showWelcome;
   final bool onboardingShown;
 
   @override
@@ -119,22 +117,22 @@ class YokoMarketApp extends StatelessWidget {
         debugShowCheckedModeBanner: false,
         theme: AppTheme.light,
         themeMode: ThemeMode.light,
-        home: _StartScreen(welcomeShown: welcomeShown, onboardingShown: onboardingShown),
+        home: _StartScreen(showWelcome: showWelcome, onboardingShown: onboardingShown),
       ),
     );
   }
 }
 
-/// Shows [WelcomeOverlay] on first launch; goes straight to [MainScreen]
+/// Shows [WelcomeOverlay] on every cold start (when [showWelcome]); goes straight to [MainScreen]
 /// otherwise. [MainScreen] is always in the tree so API calls start
 /// immediately — the animation never delays data loading.
 class _StartScreen extends StatefulWidget {
   const _StartScreen({
-    required this.welcomeShown,
+    required this.showWelcome,
     this.onboardingShown = true,
   });
 
-  final bool welcomeShown;
+  final bool showWelcome;
   final bool onboardingShown;
 
   @override
@@ -147,7 +145,7 @@ class _StartScreenState extends State<_StartScreen> {
   @override
   void initState() {
     super.initState();
-    _showOverlay = !widget.welcomeShown && !_isRunningUnderTest();
+    _showOverlay = widget.showWelcome && !_isRunningUnderTest();
   }
 
   void _onOverlayDone() {
