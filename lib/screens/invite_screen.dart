@@ -63,19 +63,28 @@ class _InviteScreenState extends State<InviteScreen> {
     if (code == null || code.isEmpty) return;
     Clipboard.setData(ClipboardData(text: code));
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Код скопирован'),
-        duration: Duration(seconds: 2),
-      ),
+      const SnackBar(content: Text('Код скопирован'), duration: Duration(seconds: 2)),
+    );
+  }
+
+  void _copyLink() {
+    final link = _info?.inviteLink;
+    if (link == null || link.isEmpty) return;
+    Clipboard.setData(ClipboardData(text: link));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Ссылка скопирована'), duration: Duration(seconds: 2)),
     );
   }
 
   Future<void> _share() async {
     final info = _info;
     if (info == null || info.code.isEmpty) return;
-    final text = 'Привет! Скачай YokoMarket и введи мой код ${info.code} '
-        'при регистрации — получишь ${_fmt(info.bonusUser)} бонусов '
-        'на первый заказ! 🛍️';
+    final link = info.inviteLink.isNotEmpty
+        ? info.inviteLink
+        : 'https://yoko-sun.kz/invite/${info.code}';
+    final text = 'Привет! Получи ${_fmt(info.bonusUser)} бонусов в Yoko Market! 🛍️\n\n'
+        '$link\n\n'
+        'Или введи код при регистрации: ${info.code}';
     await SharePlus.instance.share(ShareParams(text: text));
   }
 
@@ -153,6 +162,7 @@ class _InviteScreenState extends State<InviteScreen> {
         _CodeCard(
           info: info,
           onCopy: _copyCode,
+          onCopyLink: _copyLink,
           onShare: _share,
         ),
         const SizedBox(height: 16),
@@ -172,11 +182,13 @@ class _CodeCard extends StatelessWidget {
   const _CodeCard({
     required this.info,
     required this.onCopy,
+    required this.onCopyLink,
     required this.onShare,
   });
 
   final ReferralInfo info;
   final VoidCallback onCopy;
+  final VoidCallback onCopyLink;
   final VoidCallback onShare;
 
   @override
@@ -224,6 +236,45 @@ class _CodeCard extends StatelessWidget {
               ),
             ],
           ),
+          if (info.inviteLink.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            GestureDetector(
+              onTap: onCopyLink,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.link_rounded, color: Colors.white, size: 16),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        info.inviteLink,
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.9),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Копировать',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.75),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
           const SizedBox(height: 20),
           SizedBox(
             width: double.infinity,
@@ -231,7 +282,7 @@ class _CodeCard extends StatelessWidget {
               onPressed: onShare,
               icon: const Icon(Icons.share_rounded, size: 18),
               label: const Text(
-                'Поделиться',
+                'Поделиться ссылкой',
                 style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
               ),
               style: FilledButton.styleFrom(
@@ -308,12 +359,12 @@ class _ConditionsCard extends StatelessWidget {
           const SizedBox(height: 16),
           _Step(
             step: '1',
-            text: 'Поделитесь кодом с другом',
+            text: 'Поделитесь ссылкой или кодом с другом',
           ),
           const SizedBox(height: 12),
           _Step(
             step: '2',
-            text: 'Друг скачивает YokoMarket и вводит ваш код при регистрации',
+            text: 'Друг переходит по ссылке, скачивает Yoko Market и вводит код при регистрации',
           ),
           const SizedBox(height: 12),
           _Step(

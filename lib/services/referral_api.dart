@@ -5,19 +5,26 @@ import '../config/app_config.dart';
 class ReferralInfo {
   const ReferralInfo({
     required this.code,
+    required this.inviteLink,
     required this.bonusReferrer,
     required this.bonusUser,
   });
 
   final String code;
+  final String inviteLink;
   final int bonusReferrer;
   final int bonusUser;
 
-  factory ReferralInfo.fromJson(Map<String, dynamic> j) => ReferralInfo(
-        code: j['referral_code'] as String? ?? '',
-        bonusReferrer: (j['bonus_referrer'] as num?)?.toInt() ?? 500,
-        bonusUser: (j['bonus_user'] as num?)?.toInt() ?? 300,
-      );
+  factory ReferralInfo.fromJson(Map<String, dynamic> j) {
+    final code = j['referral_code'] as String? ?? '';
+    return ReferralInfo(
+      code: code,
+      inviteLink: j['invite_link'] as String? ??
+          (code.isNotEmpty ? 'https://yoko-sun.kz/invite/$code' : ''),
+      bonusReferrer: (j['bonus_referrer'] as num?)?.toInt() ?? 300,
+      bonusUser: (j['bonus_user'] as num?)?.toInt() ?? 1000,
+    );
+  }
 }
 
 class ReferralStats {
@@ -88,5 +95,17 @@ class ReferralApi {
       options: _auth(token),
     );
     return ReferralStats.fromJson(resp.data as Map<String, dynamic>);
+  }
+
+  /// Applies a referral code for the current user and accrues the sign-up bonus.
+  /// Returns bonus earned. Throws DioException on invalid_code / already_referred.
+  Future<int> activateReferral(String token, String code) async {
+    final resp = await _dio.post<dynamic>(
+      '/profile/activate-referral',
+      data: {'code': code.trim().toUpperCase()},
+      options: _auth(token),
+    );
+    final data = resp.data as Map<String, dynamic>;
+    return (data['bonus_earned'] as num?)?.toInt() ?? 0;
   }
 }

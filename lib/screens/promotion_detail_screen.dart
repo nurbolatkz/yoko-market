@@ -248,6 +248,7 @@ class _ContentBody extends StatelessWidget {
     final validUntil = _parseDate(data['valid_until']);
     final actionType = data['action_type'] as String? ?? 'none';
     final actionValue = data['action_value'] as String?;
+    final sections = (data['sections'] as List?)?.cast<Map<String, dynamic>>() ?? [];
 
     final hasAction = actionType != 'none' &&
         actionValue != null &&
@@ -290,7 +291,17 @@ class _ContentBody extends StatelessWidget {
                   const SizedBox(height: 16),
                   _DateRow(validFrom: validFrom, validUntil: validUntil, isEnded: isEnded),
                 ],
-                if (fullDescription != null && fullDescription.isNotEmpty) ...[
+
+                // ── Rich sections ──────────────────────────────────────
+                for (final section in sections) ...[
+                  const SizedBox(height: 24),
+                  _SectionWidget(section: section),
+                ],
+
+                // ── Plain text fallback (if no sections) ──────────────
+                if (sections.isEmpty &&
+                    fullDescription != null &&
+                    fullDescription.isNotEmpty) ...[
                   const SizedBox(height: 20),
                   const Divider(color: AppColors.border),
                   const SizedBox(height: 20),
@@ -311,6 +322,7 @@ class _ContentBody extends StatelessWidget {
                     ),
                   ),
                 ],
+
                 if (hasAction && !isEnded) ...[
                   const SizedBox(height: 28),
                   _ActionButton(
@@ -336,6 +348,284 @@ DateTime? _parseDate(dynamic value) {
     return DateTime.parse('$value');
   } catch (_) {
     return null;
+  }
+}
+
+// ── Section dispatcher ─────────────────────────────────────────────────────
+
+class _SectionWidget extends StatelessWidget {
+  const _SectionWidget({required this.section});
+
+  final Map<String, dynamic> section;
+
+  @override
+  Widget build(BuildContext context) {
+    final type = section['type'] as String? ?? '';
+    return switch (type) {
+      'highlights' => _HighlightsSection(section: section),
+      'conditions' => _ListSection(section: section, numbered: false),
+      'steps'      => _ListSection(section: section, numbered: true),
+      'prize'      => _PrizeSection(section: section),
+      _            => const SizedBox.shrink(),
+    };
+  }
+}
+
+// ── Highlights ─────────────────────────────────────────────────────────────
+
+class _HighlightsSection extends StatelessWidget {
+  const _HighlightsSection({required this.section});
+
+  final Map<String, dynamic> section;
+
+  static Color _parseColor(String? hex) {
+    if (hex == null || hex.isEmpty) return AppColors.purple;
+    try {
+      final clean = hex.replaceFirst('#', '');
+      return Color(int.parse('FF$clean', radix: 16));
+    } catch (_) {
+      return AppColors.purple;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final items = (section['items'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+    if (items.isEmpty) return const SizedBox.shrink();
+
+    return SizedBox(
+      height: 88,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: EdgeInsets.zero,
+        itemCount: items.length,
+        separatorBuilder: (_, i) => const SizedBox(width: 10),
+        itemBuilder: (context, i) {
+          final item = items[i];
+          final icon = item['icon'] as String? ?? '✦';
+          final label = item['label'] as String? ?? '';
+          final color = _parseColor(item['color'] as String?);
+          final bgColor = color.withValues(alpha: 0.10);
+
+          return Container(
+            width: 100,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: bgColor,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(icon, style: const TextStyle(fontSize: 22)),
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    height: 1.25,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+// ── Conditions / Steps list ────────────────────────────────────────────────
+
+class _ListSection extends StatelessWidget {
+  const _ListSection({required this.section, required this.numbered});
+
+  final Map<String, dynamic> section;
+  final bool numbered;
+
+  @override
+  Widget build(BuildContext context) {
+    final title = section['title'] as String?;
+    final items = (section['items'] as List?)?.map((e) => '$e').toList() ?? [];
+    if (items.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (title != null && title.isNotEmpty) ...[
+            Text(
+              title,
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                color: AppColors.navy,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+          for (int i = 0; i < items.length; i++) ...[
+            if (i > 0) const SizedBox(height: 10),
+            _ListItem(
+              index: i,
+              text: items[i],
+              numbered: numbered,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _ListItem extends StatelessWidget {
+  const _ListItem({
+    required this.index,
+    required this.text,
+    required this.numbered,
+  });
+
+  final int index;
+  final String text;
+  final bool numbered;
+
+  @override
+  Widget build(BuildContext context) {
+    Widget bullet;
+    if (numbered) {
+      bullet = Container(
+        width: 22,
+        height: 22,
+        decoration: BoxDecoration(
+          color: AppColors.purple,
+          borderRadius: BorderRadius.circular(11),
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          '${index + 1}',
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      );
+    } else {
+      bullet = Container(
+        width: 22,
+        height: 22,
+        decoration: BoxDecoration(
+          color: AppColors.purpleSoft,
+          borderRadius: BorderRadius.circular(11),
+        ),
+        alignment: Alignment.center,
+        child: const Icon(
+          Icons.check_rounded,
+          color: AppColors.purple,
+          size: 14,
+        ),
+      );
+    }
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        bullet,
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            text,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: AppColors.navy,
+              height: 1.45,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ── Prize section ──────────────────────────────────────────────────────────
+
+class _PrizeSection extends StatelessWidget {
+  const _PrizeSection({required this.section});
+
+  final Map<String, dynamic> section;
+
+  @override
+  Widget build(BuildContext context) {
+    final title = section['title'] as String? ?? 'Приз';
+    final description = section['description'] as String?;
+    final imageUrl = section['image_url'] as String?;
+
+    return Container(
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF6C5CE7), Color(0xFF9B59B6)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (imageUrl != null && imageUrl.isNotEmpty)
+            ClipRRect(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+              child: Image.network(
+                imageUrl,
+                height: 160,
+                fit: BoxFit.cover,
+                errorBuilder: (_, e, st) => const SizedBox.shrink(),
+              ),
+            ),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Text('🏆', style: TextStyle(fontSize: 18)),
+                    const SizedBox(width: 8),
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+                if (description != null && description.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    description,
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 13,
+                      height: 1.45,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -384,7 +674,7 @@ class _HeroImage extends StatelessWidget {
       child: Image.network(
         imageUrl,
         fit: BoxFit.cover,
-        errorBuilder: (_, _, _) => Container(
+        errorBuilder: (_, e, st) => Container(
           color: AppColors.purpleSoft,
           alignment: Alignment.center,
           child: const Icon(
@@ -432,7 +722,7 @@ class _DateRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final style = Theme.of(context).textTheme.bodySmall?.copyWith(
-      color: isEnded ? AppColors.navyMuted : AppColors.navyMuted,
+      color: AppColors.navyMuted,
     );
     return Row(
       children: [

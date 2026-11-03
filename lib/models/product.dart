@@ -14,6 +14,7 @@ class Product {
   final bool inStock;
   final int stockQuantity;
   final double rating;
+  final int reviewCount;
 
   Product({
     required this.id,
@@ -29,6 +30,7 @@ class Product {
     this.inStock = true,
     this.stockQuantity = 1,
     this.rating = 4.5,
+    this.reviewCount = 0,
   })  : imageUrls = imageUrls ?? (imageUrl.isNotEmpty ? [imageUrl] : const []),
         specs = specs ?? const {};
 
@@ -44,6 +46,7 @@ class Product {
     'inStock': inStock,
     'stockQuantity': stockQuantity,
     'rating': rating,
+    'reviewCount': reviewCount,
   };
 
   factory Product.fromCartJson(Map<String, dynamic> json) => Product(
@@ -58,6 +61,7 @@ class Product {
     inStock: json['inStock'] as bool? ?? true,
     stockQuantity: _asInt(json['stockQuantity']),
     rating: _asDouble(json['rating']),
+    reviewCount: _asInt(json['reviewCount']),
   );
 
   factory Product.fromApiJson(Map<String, dynamic> json) {
@@ -90,6 +94,7 @@ class Product {
       inStock: stockQuantity > 0 && json['is_active'] != false,
       stockQuantity: stockQuantity,
       rating: _asDouble(json['rating']),
+      reviewCount: _asInt(json['review_count']),
     );
   }
 }
