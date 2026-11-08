@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../models/banner_item.dart';
 import '../models/product.dart';
+import '../models/product_category.dart';
 import '../providers/auth_provider.dart';
 import '../providers/market_provider.dart';
 import '../providers/wishlist_provider.dart';
@@ -45,8 +46,11 @@ class _CatalogScreenState extends State<CatalogScreen> {
     final cartCount = provider.cartItemCount;
     final cartTotal = provider.cartTotalAmount;
 
-    final isInitialLoad = provider.catalogLoading && provider.categories.isEmpty;
-    final hasError = !provider.catalogLoading && provider.catalogError != null && provider.categories.isEmpty;
+    final isInitialLoad =
+        provider.catalogLoading && provider.categories.isEmpty;
+    final hasError = !provider.catalogLoading &&
+        provider.catalogError != null &&
+        provider.categories.isEmpty;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -89,22 +93,21 @@ class _CatalogScreenState extends State<CatalogScreen> {
                           const SizedBox(height: 24),
                         ],
                         _Categories(
-                          categories: provider.categories,
+                          categories: provider.categoryObjects,
                           onSelected: widget.onCategorySelected,
                           onSeeAll: () => widget.onCategorySelected('All'),
                         ),
-                        if (provider.featuredLoading)
-                          ...[
-                            const SizedBox(height: 28),
-                            const _SkeletonBox(height: 18, width: 160, radius: 6),
-                            const SizedBox(height: 14),
-                            const _SkeletonHorizontalRow(),
-                          ]
-                        else if (provider.featuredProducts.isNotEmpty) ...[
+                        if (provider.featuredLoading) ...[
+                          const SizedBox(height: 28),
+                          const _SkeletonBox(height: 18, width: 160, radius: 6),
+                          const SizedBox(height: 14),
+                          const _SkeletonHorizontalRow(),
+                        ] else if (provider.featuredProducts.isNotEmpty) ...[
                           const SizedBox(height: 28),
                           _SectionHeader(
                             title: 'Лучшие предложения',
-                            onSeeAll: () => widget.onCategorySelected('All'),
+                            onSeeAll: () =>
+                                widget.onCategorySelected('All'),
                           ),
                           const SizedBox(height: 14),
                           _HorizontalProductRow(
@@ -114,7 +117,8 @@ class _CatalogScreenState extends State<CatalogScreen> {
                         ],
                         if (provider.lastSeenProducts.isNotEmpty) ...[
                           const SizedBox(height: 28),
-                          const _SectionHeader(title: 'Недавно просмотренные'),
+                          const _SectionHeader(
+                              title: 'Недавно просмотренные'),
                           const SizedBox(height: 14),
                           _HorizontalProductRow(
                             products: provider.lastSeenProducts,
@@ -154,7 +158,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
   }
 }
 
-// ── Skeleton / Error states ──────────────────────────────────────────────
+// ── Skeleton / Error states ──────────────────────────────────────────────────
 
 class _SkeletonBox extends StatelessWidget {
   const _SkeletonBox({
@@ -173,7 +177,7 @@ class _SkeletonBox extends StatelessWidget {
       height: height,
       width: width,
       decoration: BoxDecoration(
-        color: const Color(0xFFE8E6E1),
+        color: AppColors.lavenderMid,
         borderRadius: BorderRadius.circular(radius),
       ),
     );
@@ -191,8 +195,9 @@ class _SkeletonHorizontalRow extends StatelessWidget {
         scrollDirection: Axis.horizontal,
         physics: const NeverScrollableScrollPhysics(),
         itemCount: 4,
-        separatorBuilder: (_, index) => const SizedBox(width: 10),
-        itemBuilder: (_, index) => const _SkeletonBox(height: 220, width: 140),
+        separatorBuilder: (_, _) => const SizedBox(width: 10),
+        itemBuilder: (_, _) =>
+            const _SkeletonBox(height: 220, width: 140),
       ),
     );
   }
@@ -213,7 +218,8 @@ class _SkeletonProductGrid extends StatelessWidget {
           crossAxisSpacing: 12,
           mainAxisSpacing: 12,
         ),
-        itemBuilder: (_, index) => const _SkeletonBox(height: double.infinity, radius: 16),
+        itemBuilder: (_, _) =>
+            const _SkeletonBox(height: double.infinity, radius: 16),
       ),
     );
   }
@@ -239,32 +245,39 @@ class _HomeSkeleton extends StatelessWidget {
               const SizedBox(height: 18),
               const _SkeletonBox(height: 160, radius: 16),
               const SizedBox(height: 24),
-              Row(
-                children: List.generate(
-                  5,
-                  (i) => Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 3),
-                      child: Column(
-                        children: [
-                          const AspectRatio(
-                            aspectRatio: 1,
-                            child: _SkeletonBox(height: double.infinity, radius: 16),
-                          ),
-                          const SizedBox(height: 6),
-                          Container(
-                            height: 12,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFE8E6E1),
-                              borderRadius: BorderRadius.circular(4),
+              // 4-column category skeletons (2 rows)
+              ...List.generate(2, (row) => Padding(
+                padding: EdgeInsets.only(bottom: row < 1 ? 12 : 0),
+                child: Row(
+                  children: List.generate(
+                    4,
+                    (i) => Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 3),
+                        child: Column(
+                          children: [
+                            const AspectRatio(
+                              aspectRatio: 1,
+                              child: _SkeletonBox(
+                                height: double.infinity,
+                                radius: 14,
+                              ),
                             ),
-                          ),
-                        ],
+                            const SizedBox(height: 6),
+                            Container(
+                              height: 10,
+                              decoration: BoxDecoration(
+                                color: AppColors.lavenderMid,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
+              )),
               const SizedBox(height: 28),
               const _SkeletonBox(height: 18, width: 160, radius: 6),
               const SizedBox(height: 14),
@@ -284,7 +297,55 @@ class _HomeSkeleton extends StatelessWidget {
   }
 }
 
-// ── Header ────────────────────────────────────────────────────────────────
+// ── Network image with loading skeleton + tap-to-retry ───────────────────────
+
+class _RetryImage extends StatefulWidget {
+  const _RetryImage({
+    required this.url,
+    required this.fit,
+    this.alignment = Alignment.center,
+  });
+
+  final String url;
+  final BoxFit fit;
+  final Alignment alignment;
+
+  @override
+  State<_RetryImage> createState() => _RetryImageState();
+}
+
+class _RetryImageState extends State<_RetryImage> {
+  int _attempt = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    return Image.network(
+      widget.url,
+      key: ValueKey('${widget.url}_$_attempt'),
+      fit: widget.fit,
+      alignment: widget.alignment,
+      cacheWidth: 400,
+      loadingBuilder: (ctx, child, prog) {
+        if (prog == null) return child;
+        return const ColoredBox(color: AppColors.lavenderMid);
+      },
+      errorBuilder: (ctx, _, _) => GestureDetector(
+        onTap: () => setState(() => _attempt++),
+        child: Container(
+          color: AppColors.lavenderDeep,
+          alignment: Alignment.center,
+          child: const Icon(
+            Icons.refresh_rounded,
+            color: AppColors.purple,
+            size: 20,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Header ────────────────────────────────────────────────────────────────────
 
 class _Header extends StatelessWidget {
   const _Header();
@@ -346,7 +407,7 @@ class _Header extends StatelessWidget {
   }
 }
 
-// ── Search bar ────────────────────────────────────────────────────────────
+// ── Search bar ─────────────────────────────────────────────────────────────────
 
 class _SearchBar extends StatelessWidget {
   const _SearchBar({required this.controller, required this.onSubmitted});
@@ -363,16 +424,15 @@ class _SearchBar extends StatelessWidget {
       onSubmitted: onSubmitted,
       decoration: InputDecoration(
         hintText: 'Поиск товаров',
-        hintStyle: const TextStyle(color: AppColors.navyMuted, fontSize: 14),
+        hintStyle:
+            const TextStyle(color: AppColors.navyMuted, fontSize: 14),
         prefixIcon: const Icon(
           Icons.search_rounded,
           color: AppColors.navyMuted,
           size: 20,
         ),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 11,
-        ),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
         filled: true,
         fillColor: Colors.white,
         border: OutlineInputBorder(
@@ -385,14 +445,15 @@ class _SearchBar extends StatelessWidget {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: AppColors.purple, width: 1.5),
+          borderSide:
+              const BorderSide(color: AppColors.purple, width: 1.5),
         ),
       ),
     );
   }
 }
 
-// ── Banner carousel ───────────────────────────────────────────────────────
+// ── Banner carousel ───────────────────────────────────────────────────────────
 
 class _BannerCarousel extends StatefulWidget {
   const _BannerCarousel({required this.banners});
@@ -417,7 +478,10 @@ class _BannerCarouselState extends State<_BannerCarousel> {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final height = (constraints.maxWidth / 2.1).clamp(130.0, 180.0);
+        // 2.4:1 aspect ratio — wider landscape for image banners.
+        // Falls back to 160 px minimum so text-only banners don't collapse.
+        final height =
+            (constraints.maxWidth / 2.4).clamp(140.0, 190.0);
         return Column(
           children: [
             SizedBox(
@@ -425,7 +489,8 @@ class _BannerCarouselState extends State<_BannerCarousel> {
               child: PageView.builder(
                 controller: _ctrl,
                 itemCount: widget.banners.length,
-                onPageChanged: (i) => setState(() => _current = i),
+                onPageChanged: (i) =>
+                    setState(() => _current = i),
                 itemBuilder: (context, index) => Padding(
                   padding: EdgeInsets.only(
                     right: index < widget.banners.length - 1 ? 10 : 0,
@@ -441,7 +506,8 @@ class _BannerCarouselState extends State<_BannerCarousel> {
               const SizedBox(height: 10),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(widget.banners.length, (i) {
+                children:
+                    List.generate(widget.banners.length, (i) {
                   final active = i == _current;
                   return AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
@@ -449,7 +515,9 @@ class _BannerCarouselState extends State<_BannerCarousel> {
                     height: 5,
                     margin: const EdgeInsets.symmetric(horizontal: 2.5),
                     decoration: BoxDecoration(
-                      color: active ? AppColors.purple : AppColors.border,
+                      color: active
+                          ? AppColors.purple
+                          : AppColors.lavenderDeep,
                       borderRadius: BorderRadius.circular(999),
                     ),
                   );
@@ -480,7 +548,28 @@ class _BannerCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textColor = banner.textDark ? AppColors.navy : Colors.white;
+    // Image-only banner: the image is designed with its own layout/text.
+    // Showing a text overlay on top would duplicate information.
+    if (banner.imageUrl != null) {
+      return GestureDetector(
+        onTap: () => _onTap(context),
+        child: ClipRRect(
+          borderRadius: AppRadii.cardBorder,
+          child: SizedBox(
+            height: height,
+            child: _RetryImage(
+              url: banner.imageUrl!,
+              fit: BoxFit.cover,
+              alignment: Alignment.center,
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Text-only banner: title / subtitle / price on gradient background.
+    final textColor =
+        banner.textDark ? AppColors.navy : Colors.white;
     final subColor = banner.textDark
         ? AppColors.navyMuted
         : Colors.white.withAlpha(200);
@@ -488,13 +577,15 @@ class _BannerCard extends StatelessWidget {
         ? Colors.white.withAlpha(180)
         : Colors.white.withAlpha(46);
 
-    final hasPrice =
-        banner.originalPrice != null && banner.discountPrice != null;
+    final hasPrice = banner.originalPrice != null &&
+        banner.discountPrice != null;
     final discPct = hasPrice
-        ? (100 - (banner.discountPrice! / banner.originalPrice!) * 100).round()
+        ? (100 -
+                (banner.discountPrice! / banner.originalPrice!) * 100)
+            .round()
         : null;
-    final discLabel =
-        banner.discountBadge ?? (discPct != null ? '−$discPct%' : null);
+    final discLabel = banner.discountBadge ??
+        (discPct != null ? '−$discPct%' : null);
 
     return GestureDetector(
       onTap: () => _onTap(context),
@@ -503,169 +594,142 @@ class _BannerCard extends StatelessWidget {
         child: Container(
           height: height,
           decoration: _parseBackground(banner.bgColor),
-          child: Stack(
-            children: [
-              if (banner.imageUrl != null)
-                Positioned.fill(
-                  child: Image.network(
-                    banner.imageUrl!,
-                    fit: BoxFit.cover,
-                    alignment: Alignment.centerRight,
-                    errorBuilder: (_, e, s) => const SizedBox.shrink(),
-                  ),
-                ),
-              if (banner.imageUrl != null)
-                Positioned.fill(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          Colors.black.withAlpha(130),
-                          Colors.transparent,
-                        ],
-                        stops: const [0.0, 0.65],
-                      ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (banner.badge != null) ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
                     ),
-                  ),
-                ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (banner.badge != null) ...[
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 3,
-                        ),
-                        decoration: BoxDecoration(
-                          color: eyebrowBg,
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: Text(
-                          banner.badge!,
-                          style: TextStyle(
-                            color: textColor,
-                            fontSize: 9,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.8,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                    ],
-                    Text(
-                      banner.title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
+                    decoration: BoxDecoration(
+                      color: eyebrowBg,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      banner.badge!,
                       style: TextStyle(
                         color: textColor,
-                        fontSize: 17,
-                        fontWeight: FontWeight.w900,
-                        height: 1.15,
-                        letterSpacing: -0.3,
+                        fontSize: 9,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.8,
                       ),
                     ),
-                    if (banner.subtitle != null) ...[
-                      const SizedBox(height: 4),
+                  ),
+                  const SizedBox(height: 6),
+                ],
+                Text(
+                  banner.title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: textColor,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w900,
+                    height: 1.15,
+                    letterSpacing: -0.3,
+                  ),
+                ),
+                if (banner.subtitle != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    banner.subtitle!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: subColor,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+                const Spacer(),
+                if (hasPrice) ...[
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.baseline,
+                    textBaseline: TextBaseline.alphabetic,
+                    children: [
                       Text(
-                        banner.subtitle!,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                        '${banner.discountPrice!} ₸',
                         style: TextStyle(
-                          color: subColor,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
+                          color: textColor,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w900,
                         ),
                       ),
-                    ],
-                    const Spacer(),
-                    if (hasPrice) ...[
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.baseline,
-                        textBaseline: TextBaseline.alphabetic,
-                        children: [
-                          Text(
-                            '${banner.discountPrice!} ₸',
-                            style: TextStyle(
-                              color: textColor,
-                              fontSize: 20,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            '${banner.originalPrice!} ₸',
-                            style: TextStyle(
-                              color: textColor.withAlpha(150),
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              decoration: TextDecoration.lineThrough,
-                              decorationColor: textColor.withAlpha(150),
-                            ),
-                          ),
-                          if (discLabel != null) ...[
-                            const SizedBox(width: 6),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 6,
-                                vertical: 2,
-                              ),
-                              decoration: BoxDecoration(
-                                color: eyebrowBg,
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Text(
-                                discLabel,
-                                style: TextStyle(
-                                  color: textColor,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ],
+                      const SizedBox(width: 6),
+                      Text(
+                        '${banner.originalPrice!} ₸',
+                        style: TextStyle(
+                          color: textColor.withAlpha(150),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          decoration: TextDecoration.lineThrough,
+                          decorationColor: textColor.withAlpha(150),
+                        ),
                       ),
-                      const SizedBox(height: 8),
-                      GestureDetector(
-                        onTap: () => _onTap(context),
-                        child: Container(
+                      if (discLabel != null) ...[
+                        const SizedBox(width: 6),
+                        Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 7,
+                            horizontal: 6,
+                            vertical: 2,
                           ),
                           decoration: BoxDecoration(
-                            color: AppColors.yellow,
-                            borderRadius: BorderRadius.circular(10),
+                            color: eyebrowBg,
+                            borderRadius: BorderRadius.circular(6),
                           ),
-                          child: const Text(
-                            'Купить',
+                          child: Text(
+                            discLabel,
                             style: TextStyle(
-                              color: AppColors.navy,
-                              fontSize: 13,
+                              color: textColor,
+                              fontSize: 10,
                               fontWeight: FontWeight.w800,
                             ),
                           ),
                         ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  GestureDetector(
+                    onTap: () => _onTap(context),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 7,
                       ),
-                    ] else if (banner.isPromoOrGiveaway) ...[
-                      Text(
-                        banner.promoType == 'giveaway'
-                            ? 'Подробнее о розыгрыше  →'
-                            : 'Подробнее об акции  →',
+                      decoration: BoxDecoration(
+                        color: AppColors.yellow,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Text(
+                        'Купить',
                         style: TextStyle(
-                          color: textColor.withAlpha(220),
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
+                          color: AppColors.navy,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
                         ),
                       ),
-                    ],
-                  ],
-                ),
-              ),
-            ],
+                    ),
+                  ),
+                ] else if (banner.isPromoOrGiveaway) ...[
+                  Text(
+                    banner.promoType == 'giveaway'
+                        ? 'Подробнее о розыгрыше  →'
+                        : 'Подробнее об акции  →',
+                    style: TextStyle(
+                      color: textColor.withAlpha(220),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ],
+            ),
           ),
         ),
       ),
@@ -679,13 +743,16 @@ BoxDecoration _parseBackground(String bg) {
     final matches = colorRe.allMatches(bg).toList();
     if (matches.length >= 2) {
       final colors = matches
-          .map((m) => Color(int.parse('0xFF${m.group(1)!.substring(1)}')))
+          .map((m) =>
+              Color(int.parse('0xFF${m.group(1)!.substring(1)}')))
           .toList();
-      final stops =
-          matches.map((m) => double.parse(m.group(2)!) / 100).toList();
+      final stops = matches
+          .map((m) => double.parse(m.group(2)!) / 100)
+          .toList();
       final anglePct = RegExp(r'(\d+)deg').firstMatch(bg);
-      final angleDeg =
-          anglePct != null ? double.parse(anglePct.group(1)!) : 135.0;
+      final angleDeg = anglePct != null
+          ? double.parse(anglePct.group(1)!)
+          : 135.0;
       final dx = _angleToDx(angleDeg);
       final dy = _angleToDy(angleDeg);
       return BoxDecoration(
@@ -737,7 +804,29 @@ double _sin(double r) {
       (5 * 3.14159265 * 3.14159265 - 4 * x * (3.14159265 - x));
 }
 
-// ── Categories ────────────────────────────────────────────────────────────
+// ── Categories ─────────────────────────────────────────────────────────────────
+
+class _CategoryPlaceholder extends StatelessWidget {
+  const _CategoryPlaceholder({required this.name});
+
+  final String name;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: AppColors.lavenderDeep,
+      alignment: Alignment.center,
+      child: Text(
+        name.isNotEmpty ? name[0].toUpperCase() : '?',
+        style: const TextStyle(
+          color: AppColors.purple,
+          fontSize: 22,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+}
 
 class _Categories extends StatelessWidget {
   const _Categories({
@@ -746,76 +835,34 @@ class _Categories extends StatelessWidget {
     required this.onSeeAll,
   });
 
-  final List<String> categories;
+  final List<ProductCategory> categories;
   final ValueChanged<String> onSelected;
   final VoidCallback onSeeAll;
 
-  static const _pastelColors = [
-    Color(0xFFDCEEFF),
-    Color(0xFFFFF3DC),
-    Color(0xFFDCFFEE),
-    Color(0xFFFFDCEC),
-    Color(0xFFEEDCFF),
-    Color(0xFFDCFFF5),
-  ];
-
-  static const _iconColors = [
-    Color(0xFF3B9BE8),
-    Color(0xFFE8A020),
-    Color(0xFF20B060),
-    Color(0xFFE82070),
-    Color(0xFF8B40E8),
-    Color(0xFF20B0A0),
-  ];
-
-  static const _icons = {
-    'подгузник': Icons.baby_changing_station_rounded,
-    'пелёнк': Icons.layers_outlined,
-    'косметик': Icons.spa_outlined,
-    'химия': Icons.cleaning_services_outlined,
-    'салфетк': Icons.water_drop_outlined,
-    'питани': Icons.local_dining_outlined,
-    'одежда': Icons.checkroom_outlined,
-    'игрушк': Icons.toys_outlined,
-    'бумаг': Icons.receipt_long_outlined,
-    'палочк': Icons.medical_services_outlined,
-  };
-
-  static IconData _iconFor(String name) {
-    final lower = name.toLowerCase();
-    for (final entry in _icons.entries) {
-      if (lower.contains(entry.key)) return entry.value;
-    }
-    return Icons.category_outlined;
-  }
-
-  Widget _buildItem(int i, String name) {
-    final bgColor = _pastelColors[i % _pastelColors.length];
-    final iconColor = _iconColors[i % _iconColors.length];
+  Widget _buildItem(ProductCategory cat) {
     return Expanded(
       child: InkWell(
-        key: Key('home-category-$name'),
-        borderRadius: BorderRadius.circular(16),
-        onTap: () => onSelected(name),
+        key: Key('home-category-${cat.name}'),
+        borderRadius: BorderRadius.circular(14),
+        onTap: () => onSelected(cat.name),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 3),
           child: Column(
             children: [
               AspectRatio(
                 aspectRatio: 1,
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: bgColor,
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Icon(_iconFor(name), color: iconColor, size: 26),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(14),
+                  child: cat.imageUrl != null
+                      ? _RetryImage(url: cat.imageUrl!, fit: BoxFit.cover)
+                      : _CategoryPlaceholder(name: cat.name),
                 ),
               ),
               const SizedBox(height: 6),
               SizedBox(
                 height: 30,
                 child: Text(
-                  name,
+                  cat.name,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.center,
@@ -836,20 +883,25 @@ class _Categories extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final items = categories.where((c) => c != 'All').take(8).toList();
-    if (items.isEmpty) return const SizedBox.shrink();
+    // Show all categories from the API; keep their order.
+    if (categories.isEmpty) return const SizedBox.shrink();
 
-    // Split into rows of 4
     final rows = <Widget>[];
-    for (var start = 0; start < items.length; start += 4) {
-      final rowItems = items.sublist(start, (start + 4).clamp(0, items.length));
-      // Pad to 4 with invisible fillers so items stay same width
+    for (var start = 0; start < categories.length; start += 4) {
+      final end = (start + 4).clamp(0, categories.length);
+      final rowItems = categories.sublist(start, end);
       final rowWidgets = [
-        ...rowItems.asMap().entries.map((e) => _buildItem(start + e.key, e.value)),
-        ...List.generate(4 - rowItems.length, (_) => const Expanded(child: SizedBox())),
+        ...rowItems.map(_buildItem),
+        ...List.generate(
+          4 - rowItems.length,
+          (_) => const Expanded(child: SizedBox()),
+        ),
       ];
       if (rows.isNotEmpty) rows.add(const SizedBox(height: 12));
-      rows.add(Row(crossAxisAlignment: CrossAxisAlignment.start, children: rowWidgets));
+      rows.add(Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: rowWidgets,
+      ));
     }
 
     return Column(
@@ -863,7 +915,7 @@ class _Categories extends StatelessWidget {
   }
 }
 
-// ── Section header ────────────────────────────────────────────────────────
+// ── Section header ─────────────────────────────────────────────────────────────
 
 class _SectionHeader extends StatelessWidget {
   const _SectionHeader({required this.title, this.onSeeAll});
@@ -907,7 +959,7 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
-// ── Product grid ──────────────────────────────────────────────────────────
+// ── Product grid ───────────────────────────────────────────────────────────────
 
 class _ProductGrid extends StatelessWidget {
   const _ProductGrid({required this.provider});
@@ -924,18 +976,20 @@ class _ProductGrid extends StatelessWidget {
         itemCount: products.length,
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 2,
-          childAspectRatio: 0.62,
+          childAspectRatio: 0.60,
           crossAxisSpacing: 12,
           mainAxisSpacing: 12,
         ),
         itemBuilder: (context, index) {
           final product = products[index];
           final cartQty = provider.cartQuantityFor(product.id);
-          final canAdd = product.inStock && cartQty < product.stockQuantity;
+          final canAdd =
+              product.inStock && cartQty < product.stockQuantity;
           final hasDiscount = product.originalPrice != null &&
               product.originalPrice! > product.price;
           final discPct = hasDiscount
-              ? ((1 - product.price / product.originalPrice!) * 100).round()
+              ? ((1 - product.price / product.originalPrice!) * 100)
+                  .round()
               : 0;
           final wishlist = context.watch<WishlistProvider>();
           final isFav = wishlist.isFavorite(product.id);
@@ -967,7 +1021,7 @@ class _ProductGrid extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Photo with optional discount badge
+                  // Photo with optional discount + wishlist badges
                   Expanded(
                     flex: 5,
                     child: Stack(
@@ -977,7 +1031,8 @@ class _ProductGrid extends StatelessWidget {
                           child: SizedBox(
                             width: double.infinity,
                             child: ProductImage(
-                              key: Key('home-product-image-${product.id}'),
+                              key: Key(
+                                  'home-product-image-${product.id}'),
                               imageUrl: product.imageUrl,
                             ),
                           ),
@@ -1013,7 +1068,8 @@ class _ProductGrid extends StatelessWidget {
                               final token = await context
                                   .read<AuthProvider>()
                                   .getAccessToken();
-                              wishlist.toggle(product, accessToken: token);
+                              wishlist.toggle(product,
+                                  accessToken: token);
                             },
                             child: Container(
                               width: 28,
@@ -1038,7 +1094,7 @@ class _ProductGrid extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  // Prices
+                  // Price row
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.baseline,
                     textBaseline: TextBaseline.alphabetic,
@@ -1084,29 +1140,22 @@ class _ProductGrid extends StatelessWidget {
                       height: 1.25,
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  // Rating
-                  if (product.rating > 0)
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.star_rounded,
-                          size: 13,
-                          color: AppColors.yellow,
-                        ),
-                        const SizedBox(width: 2),
-                        Text(
-                          product.rating.toStringAsFixed(1),
-                          style: const TextStyle(
-                            color: AppColors.navyMuted,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
+                  // Packaging
+                  if (product.packageInfo.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      product.packageInfo,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppColors.navyMuted,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
+                  ],
                   const Spacer(),
-                  // Stepper or add button
+                  // Add / stepper
                   Align(
                     alignment: Alignment.centerRight,
                     child: cartQty > 0
@@ -1116,9 +1165,7 @@ class _ProductGrid extends StatelessWidget {
                             onDecrement: () {
                               if (cartQty > 1) {
                                 provider.updateQuantity(
-                                  product.id,
-                                  cartQty - 1,
-                                );
+                                    product.id, cartQty - 1);
                               } else {
                                 provider.removeFromCart(product.id);
                               }
@@ -1144,7 +1191,7 @@ class _ProductGrid extends StatelessWidget {
   }
 }
 
-// ── Horizontal product row (Best sellers / Last seen) ─────────────────────
+// ── Horizontal product row (Best sellers / Last seen) ─────────────────────────
 
 class _HorizontalProductRow extends StatelessWidget {
   const _HorizontalProductRow({
@@ -1158,16 +1205,17 @@ class _HorizontalProductRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 220,
+      height: 230,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: EdgeInsets.zero,
         itemCount: products.length,
-        separatorBuilder: (_, index) => const SizedBox(width: 10),
+        separatorBuilder: (_, _) => const SizedBox(width: 10),
         itemBuilder: (context, index) {
           final product = products[index];
           final cartQty = provider.cartQuantityFor(product.id);
-          final canAdd = product.inStock && cartQty < product.stockQuantity;
+          final canAdd =
+              product.inStock && cartQty < product.stockQuantity;
           final hasDiscount = product.originalPrice != null &&
               product.originalPrice! > product.price;
           final wishlist = context.watch<WishlistProvider>();
@@ -1206,7 +1254,8 @@ class _HorizontalProductRow extends StatelessWidget {
                         ClipRRect(
                           borderRadius: BorderRadius.circular(8),
                           child: SizedBox.expand(
-                            child: ProductImage(imageUrl: product.imageUrl),
+                            child:
+                                ProductImage(imageUrl: product.imageUrl),
                           ),
                         ),
                         if (hasDiscount)
@@ -1219,13 +1268,13 @@ class _HorizontalProductRow extends StatelessWidget {
                                 vertical: 2,
                               ),
                               decoration: BoxDecoration(
-                                color: AppColors.yellow,
+                                color: const Color(0xFFFF4444),
                                 borderRadius: BorderRadius.circular(6),
                               ),
                               child: Text(
                                 '−${((1 - product.price / product.originalPrice!) * 100).round()}%',
                                 style: const TextStyle(
-                                  color: AppColors.navy,
+                                  color: Colors.white,
                                   fontSize: 9,
                                   fontWeight: FontWeight.w800,
                                 ),
@@ -1240,7 +1289,8 @@ class _HorizontalProductRow extends StatelessWidget {
                               final token = await context
                                   .read<AuthProvider>()
                                   .getAccessToken();
-                              wishlist.toggle(product, accessToken: token);
+                              wishlist.toggle(product,
+                                  accessToken: token);
                             },
                             child: Container(
                               width: 24,
@@ -1276,6 +1326,19 @@ class _HorizontalProductRow extends StatelessWidget {
                       height: 1.25,
                     ),
                   ),
+                  if (product.packageInfo.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      product.packageInfo,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 10,
+                        color: AppColors.navyMuted,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 4),
                   Row(
                     children: [
@@ -1289,21 +1352,51 @@ class _HorizontalProductRow extends StatelessWidget {
                           ),
                         ),
                       ),
-                      if (canAdd)
+                      if (cartQty > 0)
+                        _Stepper(
+                          qty: cartQty,
+                          canIncrement: canAdd,
+                          onDecrement: () {
+                            if (cartQty > 1) {
+                              provider.updateQuantity(
+                                  product.id, cartQty - 1);
+                            } else {
+                              provider.removeFromCart(product.id);
+                            }
+                          },
+                          onIncrement: canAdd
+                              ? () => provider.addToCart(product)
+                              : null,
+                        )
+                      else if (canAdd)
                         GestureDetector(
                           onTap: () => provider.addToCart(product),
                           child: Container(
                             width: 26,
                             height: 26,
-                            decoration: const BoxDecoration(
+                            decoration: BoxDecoration(
                               color: AppColors.purple,
-                              shape: BoxShape.circle,
+                              borderRadius: BorderRadius.circular(8),
                             ),
                             child: const Icon(
                               Icons.add,
                               color: Colors.white,
                               size: 16,
                             ),
+                          ),
+                        )
+                      else
+                        Container(
+                          width: 26,
+                          height: 26,
+                          decoration: BoxDecoration(
+                            color: AppColors.border,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(
+                            Icons.remove,
+                            color: AppColors.navyMuted,
+                            size: 14,
                           ),
                         ),
                     ],
@@ -1318,7 +1411,7 @@ class _HorizontalProductRow extends StatelessWidget {
   }
 }
 
-// ── Stepper ───────────────────────────────────────────────────────────────
+// ── Stepper ────────────────────────────────────────────────────────────────────
 
 class _Stepper extends StatelessWidget {
   const _Stepper({
@@ -1373,7 +1466,8 @@ class _Stepper extends StatelessWidget {
 }
 
 class _StepBtn extends StatelessWidget {
-  const _StepBtn({required this.icon, required this.onTap, required this.active});
+  const _StepBtn(
+      {required this.icon, required this.onTap, required this.active});
 
   final IconData icon;
   final VoidCallback? onTap;
@@ -1396,7 +1490,7 @@ class _StepBtn extends StatelessWidget {
   }
 }
 
-// ── Add button ────────────────────────────────────────────────────────────
+// ── Add button ─────────────────────────────────────────────────────────────────
 
 class _AddButton extends StatefulWidget {
   const _AddButton({required this.canAdd, this.onTap});
@@ -1428,13 +1522,14 @@ class _AddButtonState extends State<_AddButton> {
           width: 32,
           height: 32,
           decoration: BoxDecoration(
-            color: widget.canAdd ? AppColors.yellow : AppColors.border,
+            color: widget.canAdd ? AppColors.purple : AppColors.border,
             borderRadius: BorderRadius.circular(9),
           ),
           child: Icon(
             Icons.add,
             size: 17,
-            color: widget.canAdd ? AppColors.navy : AppColors.navyMuted,
+            color:
+                widget.canAdd ? Colors.white : AppColors.navyMuted,
           ),
         ),
       ),
@@ -1442,7 +1537,7 @@ class _AddButtonState extends State<_AddButton> {
   }
 }
 
-// ── Cart panel ────────────────────────────────────────────────────────────
+// ── Cart panel ─────────────────────────────────────────────────────────────────
 
 class _CartPanel extends StatelessWidget {
   const _CartPanel({
@@ -1457,9 +1552,9 @@ class _CartPanel extends StatelessWidget {
 
   String _itemWord(int n) {
     if (n % 10 == 1 && n % 100 != 11) return 'товар';
-    if (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20)) {
-      return 'товара';
-    }
+    if (n % 10 >= 2 &&
+        n % 10 <= 4 &&
+        (n % 100 < 10 || n % 100 >= 20)) { return 'товара'; }
     return 'товаров';
   }
 
@@ -1469,7 +1564,8 @@ class _CartPanel extends StatelessWidget {
       onTap: onTap,
       child: Container(
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+        padding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
         decoration: BoxDecoration(
           color: AppColors.purple,
           borderRadius: BorderRadius.circular(16),
@@ -1498,7 +1594,8 @@ class _CartPanel extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 8),
-            Container(width: 1, height: 14, color: Colors.white38),
+            Container(
+                width: 1, height: 14, color: Colors.white38),
             const SizedBox(width: 8),
             Text(
               '$itemCount ${_itemWord(itemCount)}',

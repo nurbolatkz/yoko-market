@@ -26,9 +26,10 @@ class ProductImage extends StatelessWidget {
             : Image.network(
                 imageUrl,
                 fit: BoxFit.contain,
+                cacheWidth: 400,
                 loadingBuilder: (context, child, loadingProgress) {
                   if (loadingProgress == null) return child;
-                  return const ProductImagePlaceholder();
+                  return const ColoredBox(color: Color(0xFFD8D0F0));
                 },
                 errorBuilder: (_, _, _) => const ProductImagePlaceholder(),
               ),
