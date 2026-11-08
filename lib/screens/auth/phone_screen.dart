@@ -16,10 +16,16 @@ class PhoneScreen extends StatefulWidget {
     super.key,
     this.onSuccess,
     this.fromCheckout = false,
+    this.forgotPin = false,
   });
 
   final VoidCallback? onSuccess;
   final bool fromCheckout;
+
+  /// When true: re-auth flow for "Забыли PIN?".
+  /// Changes copy, hides "Продолжить без входа", and pops with [true] on success
+  /// so the caller can proceed to [PinSetupScreen].
+  final bool forgotPin;
 
   @override
   State<PhoneScreen> createState() => _PhoneScreenState();
@@ -101,7 +107,9 @@ class _PhoneScreenState extends State<PhoneScreen> {
           ),
         ),
       );
-      if ((success == true) && mounted) Navigator.of(context).pop();
+      if ((success == true) && mounted) {
+        Navigator.of(context).pop(widget.forgotPin ? true : null);
+      }
     } on DioException catch (e) {
       if (!mounted) return;
       final detail = _detail(e);
@@ -151,14 +159,14 @@ class _PhoneScreenState extends State<PhoneScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              'Вход по телефону',
+              widget.forgotPin ? 'Сброс PIN-кода' : 'Вход по телефону',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: AppColors.navyMuted,
               ),
             ),
             const SizedBox(height: 8),
             Text(
-              'Рады вас видеть',
+              widget.forgotPin ? 'Подтвердите номер' : 'Рады вас видеть',
               style: theme.textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.w700,
                 color: AppColors.navy,
@@ -166,7 +174,9 @@ class _PhoneScreenState extends State<PhoneScreen> {
             ),
             const SizedBox(height: 6),
             Text(
-              'Отправим SMS с кодом.',
+              widget.forgotPin
+                  ? 'Отправим SMS-код для подтверждения личности.'
+                  : 'Отправим SMS с кодом.',
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: AppColors.navyMuted,
               ),
@@ -255,12 +265,14 @@ class _PhoneScreenState extends State<PhoneScreen> {
             ],
             const SizedBox(height: 20),
             _LegalFooter(legal: _legal),
-            const SizedBox(height: 12),
-            AppButton(
-              label: 'Продолжить без входа',
-              variant: AppButtonVariant.secondary,
-              onPressed: () => Navigator.of(context).pop(),
-            ),
+            if (!widget.forgotPin) ...[
+              const SizedBox(height: 12),
+              AppButton(
+                label: 'Продолжить без входа',
+                variant: AppButtonVariant.secondary,
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            ],
           ],
         ),
       ),
