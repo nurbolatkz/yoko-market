@@ -4,10 +4,12 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../config/app_config.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/referral_api.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/ui/app_button.dart';
+import 'fast_login_setup_screen.dart';
 import 'profile_setup_screen.dart';
 
 /// Shown once after OTP for new users.
@@ -94,21 +96,17 @@ class _InviteCodeScreenState extends State<InviteCodeScreen> {
     }
   }
 
-  Future<void> _proceed() async {
-    await _markShown();
-    if (!mounted) return;
-    await Navigator.of(context).push<void>(
-      MaterialPageRoute(builder: (_) => const ProfileSetupScreen()),
-    );
-    if (!mounted) return;
-    Navigator.of(context).pop();
-  }
+  Future<void> _proceed() => _navigateNext();
+  Future<void> _skip() => _navigateNext();
 
-  Future<void> _skip() async {
+  Future<void> _navigateNext() async {
     await _markShown();
     if (!mounted) return;
+    final Widget next = AppConfig.fastLoginEnabled
+        ? const FastLoginSetupScreen()
+        : const ProfileSetupScreen();
     await Navigator.of(context).push<void>(
-      MaterialPageRoute(builder: (_) => const ProfileSetupScreen()),
+      MaterialPageRoute(builder: (_) => next),
     );
     if (!mounted) return;
     Navigator.of(context).pop();
