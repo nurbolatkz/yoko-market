@@ -13,7 +13,9 @@ import 'providers/market_provider.dart';
 import 'providers/orders_provider.dart';
 import 'providers/wishlist_provider.dart';
 import 'screens/auth/onboarding_screen.dart';
+import 'screens/auth/phone_screen.dart';
 import 'screens/auth/pin_entry_screen.dart';
+import 'screens/auth/pin_setup_screen.dart';
 import 'screens/main_screen.dart';
 import 'screens/welcome_screen.dart';
 import 'services/fast_login_service.dart';
@@ -216,6 +218,38 @@ class _StartScreenState extends State<_StartScreen> {
     } catch (_) {}
   }
 
+  Future<void> _onForgotPin() async {
+    // Wipe fast-login data before re-auth so there is no stale PIN hash
+    // if the user cancels mid-flow.
+    await _pinService?.disable();
+    if (!mounted) return;
+
+    // Push PhoneScreen for SMS identity verification.
+    // PhoneScreen(forgotPin: true) pops with true on OTP success.
+    final authenticated = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(builder: (_) => const PhoneScreen(forgotPin: true)),
+    );
+    if (!mounted) return;
+
+    if (authenticated != true) {
+      // User cancelled recovery — fast login is already disabled,
+      // so just reveal the app without a PIN.
+      setState(() { _pinNeeded = false; _pinService = null; });
+      return;
+    }
+
+    // Identity confirmed. Set up a new PIN.
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => PinSetupScreen(
+          onComplete: () => Navigator.of(context).pop(),
+        ),
+      ),
+    );
+    if (!mounted) return;
+    setState(() { _pinNeeded = false; _pinService = null; });
+  }
+
   void _onOverlayDone() {
     setState(() => _showOverlay = false);
     if (!widget.onboardingShown) {
@@ -243,13 +277,7 @@ class _StartScreenState extends State<_StartScreen> {
       return PinEntryScreen(
         fastLoginService: _pinService,
         onSuccess: () => setState(() { _pinNeeded = false; }),
-        onForgotPin: () {
-          // PR-5 will route to PhoneScreen for SMS re-auth.
-          // For now: disable fast login locally and open the app.
-          _pinService?.disable().then((_) {
-            if (mounted) setState(() { _pinNeeded = false; _pinService = null; });
-          });
-        },
+        onForgotPin: _onForgotPin,
       );
     }
 
