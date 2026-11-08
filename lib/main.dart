@@ -1,5 +1,6 @@
 import 'dart:io' show Platform;
 
+import 'package:app_links/app_links.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -14,8 +15,19 @@ import 'providers/wishlist_provider.dart';
 import 'screens/auth/onboarding_screen.dart';
 import 'screens/main_screen.dart';
 import 'screens/welcome_screen.dart';
+import 'services/pending_invite.dart';
 import 'services/preview_auth.dart';
 import 'theme/app_theme.dart';
+
+/// Extracts a referral code from `/invite/{code}` paths.
+String? _codeFromUri(Uri uri) {
+  final segments = uri.pathSegments;
+  if (segments.length >= 2 && segments[0] == 'invite') {
+    final code = segments[1].trim().toUpperCase();
+    if (code.isNotEmpty) return code;
+  }
+  return null;
+}
 
 /// True when running under `flutter test` (FLUTTER_TEST env var is set by
 /// the test runner). Skips the welcome animation so pumpAndSettle settles.
@@ -30,9 +42,20 @@ bool _isRunningUnderTest() {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // Read the prefs before the first frame so _StartScreen never renders a blank
-  // loading scaffold — the decision is synchronous from the widget's perspective.
-  // The welcome animation plays on every cold start; onboarding only once.
+
+  // Capture the initial deep link before the first frame so the invite code
+  // is available when InviteCodeScreen first reads PendingInvite.
+  if (!_isRunningUnderTest() && !kIsWeb) {
+    try {
+      final appLinks = AppLinks();
+      final initial = await appLinks.getInitialLink();
+      if (initial != null) {
+        final code = _codeFromUri(initial);
+        if (code != null) await PendingInvite.save(code);
+      }
+    } catch (_) {}
+  }
+
   final showWelcome = !_isRunningUnderTest();
   bool onboardingShown = false;
   if (!_isRunningUnderTest()) {
@@ -146,6 +169,17 @@ class _StartScreenState extends State<_StartScreen> {
   void initState() {
     super.initState();
     _showOverlay = widget.showWelcome && !_isRunningUnderTest();
+    _listenForLinks();
+  }
+
+  void _listenForLinks() {
+    if (kIsWeb) return;
+    try {
+      AppLinks().uriLinkStream.listen((uri) async {
+        final code = _codeFromUri(uri);
+        if (code != null) await PendingInvite.save(code);
+      });
+    } catch (_) {}
   }
 
   void _onOverlayDone() {

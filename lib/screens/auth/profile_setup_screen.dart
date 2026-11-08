@@ -5,7 +5,6 @@ import 'package:provider/provider.dart';
 import '../../models/checkout_estimate.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/checkout_api.dart';
-import '../../services/referral_api.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/ui/app_button.dart';
 
@@ -18,16 +17,13 @@ class ProfileSetupScreen extends StatefulWidget {
 
 class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   final _nameController = TextEditingController();
-  final _referralController = TextEditingController();
   final _checkoutApi = CheckoutApi();
-  final _referralApi = ReferralApi();
 
   List<BranchCity> _cities = [];
   BranchCity? _selectedCity;
   bool _loadingCities = true;
   bool _saving = false;
   String? _error;
-  String? _referralError;
 
   @override
   void initState() {
@@ -38,7 +34,6 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   @override
   void dispose() {
     _nameController.dispose();
-    _referralController.dispose();
     super.dispose();
   }
 
@@ -57,40 +52,13 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
 
   Future<void> _save() async {
     final name = _nameController.text.trim();
-    final referralCode = _referralController.text.trim().toUpperCase();
     final auth = context.read<AuthProvider>();
-    setState(() { _saving = true; _error = null; _referralError = null; });
+    setState(() { _saving = true; _error = null; });
     try {
       await auth.patchUser(
         fullName: name.isEmpty ? null : name,
         cityCode: _selectedCity?.code,
       );
-      // Apply referral code if entered
-      if (referralCode.isNotEmpty) {
-        try {
-          final token = await auth.getAccessToken();
-          if (!mounted) return;
-          if (token != null) {
-            final bonus = await _referralApi.activateReferral(token, referralCode);
-            if (mounted && bonus > 0) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Реферальный код принят! +$bonus бонусов начислено'),
-                  duration: const Duration(seconds: 3),
-                ),
-              );
-            }
-          }
-        } on DioException catch (e) {
-          final detail = (e.response?.data is Map)
-              ? e.response!.data['detail'] as String?
-              : null;
-          if (detail == 'invalid_code') {
-            if (mounted) setState(() => _referralError = 'Неверный код. Проверьте и попробуйте снова.');
-          }
-          // already_referred — silently ignore (might happen on retry)
-        }
-      }
       if (mounted) Navigator.of(context).pop();
     } on DioException {
       if (!mounted) return;
@@ -222,40 +190,6 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                       color: AppColors.navy, fontSize: 15),
                 ),
               ),
-            ),
-            const SizedBox(height: 16),
-            // Referral code field (optional)
-            TextField(
-              controller: _referralController,
-              textCapitalization: TextCapitalization.characters,
-              textInputAction: TextInputAction.done,
-              decoration: InputDecoration(
-                labelText: 'Реферальный код (необязательно)',
-                hintText: 'Например: ABC123',
-                border: OutlineInputBorder(borderRadius: AppRadii.inputBorder),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: AppRadii.inputBorder,
-                  borderSide: BorderSide(
-                    color: _referralError != null
-                        ? AppColors.error
-                        : AppColors.border,
-                  ),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: AppRadii.inputBorder,
-                  borderSide: const BorderSide(
-                      color: AppColors.purple, width: 2),
-                ),
-                errorText: _referralError,
-                suffixIcon: const Icon(Icons.card_giftcard_rounded,
-                    color: AppColors.navyMuted, size: 20),
-              ),
-              onChanged: (_) {
-                if (_referralError != null) {
-                  setState(() => _referralError = null);
-                }
-              },
-              onSubmitted: (_) => _save(),
             ),
             const SizedBox(height: 32),
             AppButton(
