@@ -1,5 +1,7 @@
 abstract final class AppConfig {
   static const uiPreview = bool.fromEnvironment('UI_PREVIEW');
+  static const mockLoyalty = bool.fromEnvironment('MOCK_LOYALTY', defaultValue: true);
+  static const mockStoreSettings = bool.fromEnvironment('MOCK_STORE_SETTINGS', defaultValue: true);
   static const mockAccountRecovery = bool.fromEnvironment('MOCK_RECOVERY', defaultValue: true);
 
   /// Enable fast login UI (PIN + biometrics).

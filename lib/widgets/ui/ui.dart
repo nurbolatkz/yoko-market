@@ -15,4 +15,6 @@ export 'skeleton.dart';
 export 'status_chip.dart';
 export 'step_header.dart';
 export 'pin_widgets.dart';
+export 'size_guide_sheet.dart';
+export 'specs_highlight.dart';
 export 'summary_rows.dart';
