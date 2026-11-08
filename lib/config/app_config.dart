@@ -2,6 +2,11 @@ abstract final class AppConfig {
   static const uiPreview = bool.fromEnvironment('UI_PREVIEW');
   static const mockAccountRecovery = bool.fromEnvironment('MOCK_RECOVERY', defaultValue: true);
 
+  /// Enable fast login UI (PIN + biometrics).
+  /// Build with --dart-define=FAST_LOGIN_ENABLED=true to activate.
+  /// Defaults to false — invisible to users until explicitly enabled.
+  static const fastLoginEnabled = bool.fromEnvironment('FAST_LOGIN_ENABLED');
+
   // Override at build time with --dart-define=API_BASE=<url>
   // Android emulator → local backend:  --dart-define=API_BASE=http://10.0.2.2:8010/api/v1
   // iOS Simulator   → local backend:  --dart-define=API_BASE=http://127.0.0.1:8010/api/v1
