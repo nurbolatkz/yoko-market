@@ -1,7 +1,7 @@
 import 'dart:io' show Platform;
 
 import 'package:app_links/app_links.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, visibleForTesting;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -13,8 +13,10 @@ import 'providers/market_provider.dart';
 import 'providers/orders_provider.dart';
 import 'providers/wishlist_provider.dart';
 import 'screens/auth/onboarding_screen.dart';
+import 'screens/auth/pin_entry_screen.dart';
 import 'screens/main_screen.dart';
 import 'screens/welcome_screen.dart';
+import 'services/fast_login_service.dart';
 import 'services/pending_invite.dart';
 import 'services/preview_auth.dart';
 import 'theme/app_theme.dart';
@@ -149,14 +151,21 @@ class YokoMarketApp extends StatelessWidget {
 /// Shows [WelcomeOverlay] on every cold start (when [showWelcome]); goes straight to [MainScreen]
 /// otherwise. [MainScreen] is always in the tree so API calls start
 /// immediately — the animation never delays data loading.
+///
+/// When [AppConfig.fastLoginEnabled] is true and the user has set up a PIN,
+/// [PinEntryScreen] is shown before [MainScreen] is revealed.
 class _StartScreen extends StatefulWidget {
   const _StartScreen({
     required this.showWelcome,
     this.onboardingShown = true,
+    this.testFastLoginEnabled, // null = use AppConfig.fastLoginEnabled
+    this.fastLoginService,     // null = use FastLoginService() (production)
   });
 
   final bool showWelcome;
   final bool onboardingShown;
+  final bool? testFastLoginEnabled;
+  final FastLoginService? fastLoginService;
 
   @override
   State<_StartScreen> createState() => _StartScreenState();
@@ -165,11 +174,36 @@ class _StartScreen extends StatefulWidget {
 class _StartScreenState extends State<_StartScreen> {
   late bool _showOverlay;
 
+  /// null = PIN gate check in progress, true/false = resolved.
+  bool? _pinNeeded;
+  FastLoginService? _pinService;
+
   @override
   void initState() {
     super.initState();
     _showOverlay = widget.showWelcome && !_isRunningUnderTest();
     _listenForLinks();
+    _checkPinGate();
+  }
+
+  Future<void> _checkPinGate() async {
+    final flagEnabled = widget.testFastLoginEnabled ?? AppConfig.fastLoginEnabled;
+    if (!flagEnabled) {
+      if (mounted) setState(() => _pinNeeded = false);
+      return;
+    }
+    final svc = widget.fastLoginService ?? FastLoginService();
+    final enabled = await svc.isEnabled();
+    if (!mounted) return;
+    setState(() {
+      _pinNeeded = enabled;
+      if (enabled) {
+        _pinService = svc;
+        // Suppress welcome overlay when gating with PIN — it would appear
+        // behind the PIN screen and then again after unlock, which is jarring.
+        _showOverlay = false;
+      }
+    });
   }
 
   void _listenForLinks() {
@@ -199,6 +233,27 @@ class _StartScreenState extends State<_StartScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Brief splash while checking secure storage for the PIN gate.
+    if (_pinNeeded == null) {
+      return const ColoredBox(color: AppColors.background);
+    }
+
+    // PIN gate: show PinEntryScreen as the root; MainScreen revealed on success.
+    if (_pinNeeded!) {
+      return PinEntryScreen(
+        fastLoginService: _pinService,
+        onSuccess: () => setState(() { _pinNeeded = false; }),
+        onForgotPin: () {
+          // PR-5 will route to PhoneScreen for SMS re-auth.
+          // For now: disable fast login locally and open the app.
+          _pinService?.disable().then((_) {
+            if (mounted) setState(() { _pinNeeded = false; _pinService = null; });
+          });
+        },
+      );
+    }
+
+    // Normal flow.
     if (!_showOverlay) return const MainScreen();
     return Stack(
       children: [
@@ -208,3 +263,18 @@ class _StartScreenState extends State<_StartScreen> {
     );
   }
 }
+
+/// Creates a [_StartScreen] with test-only overrides. Not for production use.
+@visibleForTesting
+Widget buildStartScreenForTest({
+  bool showWelcome = false,
+  bool onboardingShown = true,
+  bool? testFastLoginEnabled,
+  FastLoginService? fastLoginService,
+}) =>
+    _StartScreen(
+      showWelcome: showWelcome,
+      onboardingShown: onboardingShown,
+      testFastLoginEnabled: testFastLoginEnabled,
+      fastLoginService: fastLoginService,
+    );
