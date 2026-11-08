@@ -18,3 +18,4 @@ export 'pin_widgets.dart';
 export 'size_guide_sheet.dart';
 export 'specs_highlight.dart';
 export 'summary_rows.dart';
+export 'order_progress.dart';

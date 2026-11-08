@@ -24,8 +24,13 @@
 | POST | `/support/account-recovery` | нет | AccountRecoveryScreen | awaiting-backend |
 | GET | `/loyalty/rules` | нет | ProductDetailScreen (YoCoin badge), YoCoinScreen | ready |
 | GET | `/settings/delivery` | нет | ProductDetailScreen (доставка NavRow) | awaiting-backend |
+| GET | `/settings/contact` | нет | OrderDetailScreen (кнопка «Связаться с поддержкой») | awaiting-backend |
 
 > Добавляй строку в таблицу при каждом новом эндпоинте. Ниже размещай полное описание секцией.
+
+> **Требование к POST /checkout:** в тело успешного ответа добавить поле `"id": "uuid"` —
+> UUID созданного заказа. Нужен для прямой навигации `OrderConfirmationScreen → OrderDetailScreen`.
+> Текущий workaround: кнопка «Посмотреть заказ» открывает `OrdersScreen` при отсутствии `id`.
 
 ---
 
@@ -328,4 +333,28 @@
 
 Пока эндпоинт не готов: `AppConfig.mockStoreSettings = true` → `MockStoreSettingsApi`
 возвращает `deliveryFreeFrom = 10000`. Выключить: `--dart-define=MOCK_STORE_SETTINGS=false`.
+
+---
+
+### GET /settings/contact
+
+**Статус:** awaiting-backend  
+**Авторизация:** нет  
+**Используется в:** OrderDetailScreen (кнопка «Связаться с поддержкой»)
+
+#### Ожидаемый ответ (200)
+```json
+{
+  "telegram": "yokomarket_support",
+  "phone": "+77071234567"
+}
+```
+
+До готовности эндпоинта: кнопка «Связаться с поддержкой» открывает Telegram-ссылку
+`https://t.me/yokomarket_support?text=Помощь+с+заказом+%23{orderNumber}` (хардкод).
+
+#### Коды ошибок
+| Код | Тело | Когда |
+|---|---|---|
+| 500 | `{"detail": "internal_error"}` | Ошибка конфигурации |
 

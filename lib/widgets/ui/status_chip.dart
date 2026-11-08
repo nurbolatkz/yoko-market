@@ -59,11 +59,15 @@ class StatusChip extends StatelessWidget {
       case OrderStatusVariant.shipped:
         return (
           'В пути',
-          const Color(0xFFE8F5E9),
-          const Color(0xFF2E7D32)
+          AppColors.success.withValues(alpha: 0.12),
+          AppColors.success,
         );
       case OrderStatusVariant.delivered:
-        return ('Доставлен', const Color(0xFFE8F5E9), AppColors.success);
+        return (
+          'Доставлен',
+          AppColors.success.withValues(alpha: 0.12),
+          AppColors.success,
+        );
       case OrderStatusVariant.cancelled:
         return ('Отменён', AppColors.border, AppColors.navyMuted);
     }

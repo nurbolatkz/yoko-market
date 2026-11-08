@@ -82,6 +82,7 @@ class PlaceOrderResult {
     required this.total,
     required this.notified,
     this.botUsername,
+    this.id,
   });
 
   final String orderNumber;
@@ -89,12 +90,16 @@ class PlaceOrderResult {
   // Whether the Telegram bot successfully delivered the order notification.
   final bool notified;
   final String? botUsername;
+  // UUID of the created order — returned since checkout_service v3.
+  // When present, confirmation screen navigates directly to OrderDetailScreen.
+  final String? id;
 
   factory PlaceOrderResult.fromJson(Map<String, dynamic> j) => PlaceOrderResult(
         orderNumber: j['order_number'] as String,
         total: (j['total'] as num).toInt(),
         notified: j['notified'] as bool? ?? false,
         botUsername: j['bot_username'] as String?,
+        id: j['id'] as String?,
       );
 }
 

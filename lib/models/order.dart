@@ -56,18 +56,16 @@ class OrderSummary {
         'pending_payment' => 'Ожидает оплаты',
         'payment_received' => 'Оплата получена',
         'confirmed' => 'Подтверждён',
-        'shipped' => 'В доставке',
+        'shipped' => 'В пути',
         'delivered' => 'Доставлен',
         'cancelled' => 'Отменён',
         _ => status,
       };
 
   Color get statusColor => switch (status) {
-        'delivered' => const Color(0xFF23804A),
-        'cancelled' => const Color(0xFFD32F2F),
-        'shipped' => AppColors.purple,
-        'confirmed' => AppColors.purple,
-        'payment_received' => AppColors.purple,
+        'delivered' => AppColors.success,
+        'cancelled' => AppColors.error,
+        'shipped' || 'confirmed' || 'payment_received' => AppColors.purple,
         _ => AppColors.navyMuted,
       };
 
