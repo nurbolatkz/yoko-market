@@ -14,4 +14,5 @@ export 'screen_header.dart';
 export 'skeleton.dart';
 export 'status_chip.dart';
 export 'step_header.dart';
+export 'pin_widgets.dart';
 export 'summary_rows.dart';
