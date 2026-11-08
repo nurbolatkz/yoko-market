@@ -146,9 +146,8 @@ class YokoMarketApp extends StatelessWidget {
   }
 }
 
-/// Shows [WelcomeOverlay] on every cold start (when [showWelcome]); goes straight to [MainScreen]
-/// otherwise. [MainScreen] is always in the tree so API calls start
-/// immediately — the animation never delays data loading.
+/// Shows [WelcomeScreen] on every cold start (when [showWelcome]); goes straight to [MainScreen]
+/// otherwise.
 class _StartScreen extends StatefulWidget {
   const _StartScreen({
     required this.showWelcome,
@@ -200,11 +199,6 @@ class _StartScreenState extends State<_StartScreen> {
   @override
   Widget build(BuildContext context) {
     if (!_showOverlay) return const MainScreen();
-    return Stack(
-      children: [
-        const MainScreen(),
-        WelcomeOverlay(onDone: _onOverlayDone),
-      ],
-    );
+    return WelcomeScreen(onDone: _onOverlayDone);
   }
 }
