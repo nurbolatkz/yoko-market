@@ -18,10 +18,12 @@
 |---|---|---|---|---|
 | GET | `/my-orders` | Bearer | OrdersScreen, ProfileScreen | ready |
 | GET | `/my-orders/{id}` | Bearer | OrderDetailScreen, ReorderScreen | partial (нет variant_id) |
-| GET | `/products/{id}` | нет | ReorderScreen (параллельные запросы) | ready |
+| GET | `/products/{id}` | нет | ProductDetailScreen, ReorderScreen | partial (нет specs-полей ниже) |
 | DELETE | `/auth/account` | Bearer | DeleteAccountScreen | ready |
 | PATCH | `/profile` | Bearer | ProfileSetupScreen, PersonalDataScreen | ready |
 | POST | `/support/account-recovery` | нет | AccountRecoveryScreen | awaiting-backend |
+| GET | `/loyalty/rules` | нет | ProductDetailScreen (YoCoin badge), YoCoinScreen | ready |
+| GET | `/settings/delivery` | нет | ProductDetailScreen (доставка NavRow) | awaiting-backend |
 
 > Добавляй строку в таблицу при каждом новом эндпоинте. Ниже размещай полное описание секцией.
 
@@ -275,3 +277,55 @@
 ```
 
 ---
+
+---
+
+### ПОЖЕЛАНИЯ К GET /products/{id} — поля для ProductDetailScreen
+
+**Статус:** partial (поля отсутствуют, экран использует fallback-логику или не показывает блок)
+**Используется в:** ProductDetailScreen (блоки «Ключевые характеристики» и «Размер»)
+
+Текущий ответ `/products/{id}` содержит `specs: {}` как свободный JSON-объект.
+Для корректной работы ProductDetailScreen просим добавить в `specs` следующие
+стандартизированные ключи (если применимо к товару):
+
+| Ключ в `specs` | Тип | Пример | Используется в |
+|---|---|---|---|
+| `qty` | int | `62` | Карточка «62 шт в упаковке» в SpecsHighlight |
+| `weight_range` | string | `"6–11 кг"` | Карточка веса в SpecsHighlight + вес в чипах размера |
+| `brand` | string | `"Yokosun"` | Мелкий бренд капсом над названием товара |
+
+Дополнительно — для подгузников, если товар категории `Подгузники`:
+
+| Ключ в `specs` | Тип | Пример | Описание |
+|---|---|---|---|
+| `NB` | string | `"до 5 кг"` | Вес ребёнка для этого размера (переопределяет статичную таблицу) |
+| `S` | string | `"3–8 кг"` | — |
+| `M` | string | `"6–11 кг"` | — |
+| `L` | string | `"9–18 кг"` | — |
+| `XL` | string | `"11–25 кг"` | — |
+| `XXL` | string | `"13+ кг"` | — |
+
+Если ключи `NB`/`S`/`M`/`L`/`XL`/`XXL` присутствуют в `specs`, `SizeGuideSheet` будет
+использовать их вместо статичной таблицы.
+
+---
+
+### GET /settings/delivery
+
+**Статус:** awaiting-backend
+**Авторизация:** нет
+**Используется в:** ProductDetailScreen (NavRow «Бесплатная доставка от N ₸»)
+
+#### Ожидаемый ответ (200)
+```json
+{
+  "free_delivery_from": 10000,
+  "delivery_zone": "Алматы",
+  "delivery_note": "Доставка в течение 1–2 дней"
+}
+```
+
+Пока эндпоинт не готов: `AppConfig.mockStoreSettings = true` → `MockStoreSettingsApi`
+возвращает `deliveryFreeFrom = 10000`. Выключить: `--dart-define=MOCK_STORE_SETTINGS=false`.
+
