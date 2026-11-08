@@ -45,6 +45,9 @@ class MarketProvider with ChangeNotifier {
     ..._catalogCategories.map((category) => category.name).toSet(),
   ];
 
+  List<ProductCategory> get categoryObjects =>
+      List.unmodifiable(_catalogCategories);
+
   String _selectedCategory = 'All';
   String get selectedCategory => _selectedCategory;
 
