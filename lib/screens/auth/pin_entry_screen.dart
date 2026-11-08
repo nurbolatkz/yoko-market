@@ -8,11 +8,14 @@ import '../../widgets/ui/pin_widgets.dart';
 
 /// PIN entry screen shown on cold start when fast login is enabled.
 ///
+/// On open: checks for available biometrics and auto-triggers the platform
+/// challenge. The fingerprint button lets the user re-trigger it manually.
+///
 /// Calls [FastLoginService.verifyPin] on each 4-digit attempt.
 /// - Correct → invokes [onSuccess] (or pops if null).
 /// - Wrong ×1 → cells shake, reset.
 /// - Wrong ×2–3 → "Осталось попыток: N" warning shown.
-/// - Wrong ×4–5 → locked; countdown timer shown.
+/// - Wrong ×4–5 → locked; countdown timer shown; biometric button hidden.
 /// - Wrong ×6 → [FastLoginWipedError]: invokes [onForgotPin].
 ///
 /// [fastLoginService] and callbacks are injectable for widget tests.
@@ -27,7 +30,7 @@ class PinEntryScreen extends StatefulWidget {
   /// Injected for tests. Defaults to [FastLoginService()] (production).
   final FastLoginService? fastLoginService;
 
-  /// Called after the correct PIN is entered.
+  /// Called after the correct PIN or a successful biometric challenge.
   /// If null, pops the current route (used when pushed over MainScreen).
   final VoidCallback? onSuccess;
 
@@ -46,13 +49,16 @@ class _PinEntryScreenState extends State<PinEntryScreen>
 
   String _input = '';
   bool _loading = false;
-  bool _error = false;      // transient red state during shake
-  bool _wiped = false;      // service wiped all data after too many failures
-  bool _initDone = false;   // false until initial lockout check completes
+  bool _error = false;
+  bool _wiped = false;
+  bool _initDone = false;
 
-  int _wrongAttempts = 0;   // wrong attempts this session
-  int _lockedUntilMs = 0;   // epoch-ms lockout expiry (0 = not locked)
+  int _wrongAttempts = 0;
+  int _lockedUntilMs = 0;
   Timer? _lockTimer;
+
+  bool _biometricAvailable = false;
+  bool _biometricLoading = false;
 
   bool get _isLocked => _lockedUntilMs > DateTime.now().millisecondsSinceEpoch;
 
@@ -88,7 +94,7 @@ class _PinEntryScreenState extends State<PinEntryScreen>
       }
     });
 
-    _checkInitialLockout();
+    _initScreen();
   }
 
   @override
@@ -98,20 +104,27 @@ class _PinEntryScreenState extends State<PinEntryScreen>
     super.dispose();
   }
 
-  Future<void> _checkInitialLockout() async {
+  Future<void> _initScreen() async {
     final remaining = await _service.lockoutRemainingMs();
+    final canBio = await _service.canUseBiometrics();
     if (!mounted) return;
     setState(() {
       _initDone = true;
+      _biometricAvailable = canBio;
       if (remaining > 0) {
         _lockedUntilMs = DateTime.now().millisecondsSinceEpoch + remaining;
         _startLockTimer();
       }
     });
+    // Auto-trigger biometric challenge when the screen opens.
+    if (canBio && !_isLocked && !_wiped) {
+      await _tryBiometric();
+    }
   }
 
   void _onDigit(String d) {
-    if (_input.length >= 4 || _loading || _isLocked || _error || _wiped || !_initDone) {
+    if (_input.length >= 4 || _loading || _isLocked || _error || _wiped ||
+        !_initDone || _biometricLoading) {
       return;
     }
     final next = _input + d;
@@ -130,23 +143,15 @@ class _PinEntryScreenState extends State<PinEntryScreen>
       final ok = await _service.verifyPin(pin);
       if (!mounted) return;
       if (ok) {
-        if (widget.onSuccess != null) {
-          widget.onSuccess!();
-        } else {
-          Navigator.of(context).pop();
-        }
+        _succeed();
         return;
       }
-      // Wrong PIN — shake and show attempt warning after the 2nd failure.
       _wrongAttempts++;
       setState(() { _error = true; _input = ''; });
       await _shakeCtrl.forward(from: 0);
     } on FastLoginLockedError catch (e) {
       if (!mounted) return;
-      setState(() {
-        _lockedUntilMs = e.lockedUntilMs;
-        _input = '';
-      });
+      setState(() { _lockedUntilMs = e.lockedUntilMs; _input = ''; });
       _startLockTimer();
     } on FastLoginWipedError {
       if (!mounted) return;
@@ -154,6 +159,27 @@ class _PinEntryScreenState extends State<PinEntryScreen>
       widget.onForgotPin?.call();
     } finally {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _tryBiometric() async {
+    if (_biometricLoading || _loading || _isLocked || _wiped || !_initDone) return;
+    setState(() => _biometricLoading = true);
+    try {
+      final ok = await _service.unlockWithBiometrics();
+      if (!mounted) return;
+      if (ok) _succeed();
+      // false = user cancelled → silent fallback; PIN input stays active.
+    } finally {
+      if (mounted) setState(() => _biometricLoading = false);
+    }
+  }
+
+  void _succeed() {
+    if (widget.onSuccess != null) {
+      widget.onSuccess!();
+    } else {
+      Navigator.of(context).pop();
     }
   }
 
@@ -169,26 +195,18 @@ class _PinEntryScreenState extends State<PinEntryScreen>
         _lockTimer?.cancel();
         _lockTimer = null;
       } else {
-        setState(() {}); // refresh countdown display
+        setState(() {});
       }
     });
-  }
-
-  void _onForgotPin() {
-    widget.onForgotPin?.call();
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final keypadDisabled = _loading || _isLocked || _wiped || !_initDone;
-
-    // 4 wrong this session → 2 more until wipe (thresholds: lock at 4, wipe at 6)
-    // Show warning after the 2nd session wrong (i.e. they have 2 or fewer remaining)
+    final keypadDisabled = _loading || _isLocked || _wiped || !_initDone || _biometricLoading;
     final showAttemptWarning = !_isLocked && !_wiped && _wrongAttempts >= 2;
-    // Remaining attempts until lock (kLock1AttemptCount=4; session wrongs + already-stored wrongs
-    // unknown, so approximate from session count only for the display).
     final attemptsUntilLock = (4 - _wrongAttempts).clamp(0, 4);
+    final showBiometric = _biometricAvailable && !_isLocked && !_wiped;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -229,7 +247,6 @@ class _PinEntryScreenState extends State<PinEntryScreen>
                       child: PinCellsRow(pin: _input, error: _error),
                     ),
                     const SizedBox(height: 10),
-                    // Status line below the cells — only one is shown at a time.
                     if (_wiped)
                       const Text(
                         'Слишком много попыток.\nВойдите через SMS для сброса.',
@@ -245,11 +262,8 @@ class _PinEntryScreenState extends State<PinEntryScreen>
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Icon(
-                            Icons.lock_clock_outlined,
-                            size: 15,
-                            color: AppColors.error,
-                          ),
+                          const Icon(Icons.lock_clock_outlined,
+                              size: 15, color: AppColors.error),
                           const SizedBox(width: 6),
                           Text(
                             'Попробуйте через $_lockCountdown',
@@ -288,9 +302,16 @@ class _PinEntryScreenState extends State<PinEntryScreen>
                     onBackspace: _onBackspace,
                     disabled: keypadDisabled,
                   ),
-                  const SizedBox(height: 8),
+                  if (showBiometric) ...[
+                    const SizedBox(height: 12),
+                    _BiometricButton(
+                      loading: _biometricLoading,
+                      onTap: _biometricLoading ? null : _tryBiometric,
+                    ),
+                  ],
+                  const SizedBox(height: 4),
                   TextButton(
-                    onPressed: _wiped ? null : _onForgotPin,
+                    onPressed: _wiped ? null : () => widget.onForgotPin?.call(),
                     style: TextButton.styleFrom(
                       foregroundColor: AppColors.navyMuted,
                       textStyle: const TextStyle(
@@ -307,6 +328,39 @@ class _PinEntryScreenState extends State<PinEntryScreen>
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _BiometricButton extends StatelessWidget {
+  const _BiometricButton({required this.loading, required this.onTap});
+
+  final bool loading;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        height: 56,
+        alignment: Alignment.center,
+        child: loading
+            ? const SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  color: AppColors.purple,
+                ),
+              )
+            : const Icon(
+                Icons.fingerprint_rounded,
+                size: 48,
+                color: AppColors.purple,
+              ),
       ),
     );
   }

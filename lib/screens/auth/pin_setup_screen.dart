@@ -2,17 +2,16 @@ import 'package:flutter/material.dart';
 
 import '../../services/fast_login_service.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/ui/app_button.dart';
 import '../../widgets/ui/pin_widgets.dart';
 import 'profile_setup_screen.dart';
 
-/// Two-phase PIN creation screen.
+/// Three-phase PIN creation screen.
 ///
 /// Phase 1 — "Придумайте PIN": user enters a 4-digit PIN.
 /// Phase 2 — "Повторите PIN": user confirms the same PIN.
-///
-/// On mismatch: cells shake, turn red, then reset to phase 1.
-/// On match: calls [FastLoginService.setupPin], then invokes [onComplete]
-/// (or pushes [ProfileSetupScreen] if [onComplete] is null).
+/// Phase 3 (optional) — "Включить биометрию?": offered when the device
+///   supports biometrics. User can enable or skip; PIN is already saved.
 ///
 /// [fastLoginService] and [onComplete] are injectable — used in widget tests.
 class PinSetupScreen extends StatefulWidget {
@@ -25,7 +24,8 @@ class PinSetupScreen extends StatefulWidget {
   /// Injected for tests. Defaults to [FastLoginService()] (production storage).
   final FastLoginService? fastLoginService;
 
-  /// Called after PIN is successfully saved. If null, pushes [ProfileSetupScreen].
+  /// Called after the full setup flow completes (after PIN, after biometric
+  /// phase is resolved). If null, pushes [ProfileSetupScreen].
   final VoidCallback? onComplete;
 
   @override
@@ -43,6 +43,10 @@ class _PinSetupScreenState extends State<PinSetupScreen>
   bool _isConfirming = false;
   bool _mismatch = false;
   bool _loading = false;
+
+  // Phase 3 — biometric offer
+  bool _offeringBiometric = false;
+  bool _bioLoading = false;
 
   @override
   void initState() {
@@ -114,29 +118,66 @@ class _PinSetupScreenState extends State<PinSetupScreen>
       try {
         await _service.setupPin(pin);
       } catch (_) {
-        // ArgumentError is impossible here (4 digits verified by keypad),
-        // but surface any unexpected storage error without crashing.
         if (mounted) setState(() => _loading = false);
         return;
       }
       if (!mounted) return;
-      if (widget.onComplete != null) {
-        widget.onComplete!();
-      } else {
-        await Navigator.of(context).push<void>(
-          MaterialPageRoute(builder: (_) => const ProfileSetupScreen()),
-        );
-        if (!mounted) return;
-        Navigator.of(context).pop();
+
+      // After PIN is saved, check whether to offer biometric setup.
+      final canBio = await _service.canUseBiometrics();
+      if (!mounted) return;
+
+      if (canBio) {
+        setState(() { _loading = false; _offeringBiometric = true; });
+        return;
       }
+      setState(() => _loading = false);
+      await _proceed();
     } else {
       setState(() => _mismatch = true);
       await _shakeCtrl.forward(from: 0);
     }
   }
 
+  // ── Biometric phase ────────────────────────────────────────────────────────
+
+  Future<void> _enableBiometric() async {
+    setState(() => _bioLoading = true);
+    try {
+      await _service.unlockWithBiometrics();
+      // Result ignored — PIN is already saved. If the platform challenge
+      // succeeds the biometric is "registered" for future logins; if it fails
+      // the user can still use the PIN.
+    } finally {
+      if (mounted) setState(() => _bioLoading = false);
+    }
+    if (!mounted) return;
+    await _proceed();
+  }
+
+  Future<void> _skipBiometric() => _proceed();
+
+  Future<void> _proceed() async {
+    if (widget.onComplete != null) {
+      widget.onComplete!();
+      return;
+    }
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(builder: (_) => const ProfileSetupScreen()),
+    );
+    if (!mounted) return;
+    Navigator.of(context).pop();
+  }
+
+  // ── Build ──────────────────────────────────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
+    if (_offeringBiometric) return _buildBiometricOffer(context);
+    return _buildPinEntry(context);
+  }
+
+  Widget _buildPinEntry(BuildContext context) {
     final theme = Theme.of(context);
     final step = _isConfirming ? 2 : 1;
     final title = _isConfirming ? 'Повторите PIN' : 'Придумайте PIN';
@@ -156,7 +197,6 @@ class _PinSetupScreenState extends State<PinSetupScreen>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Scrollable header + cells — collapses gracefully on small screens.
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(horizontal: 32),
@@ -168,9 +208,7 @@ class _PinSetupScreenState extends State<PinSetupScreen>
                       children: [
                         Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 4,
-                          ),
+                              horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
                             color: AppColors.purpleSoft,
                             borderRadius: AppRadii.chipBorder,
@@ -228,13 +266,105 @@ class _PinSetupScreenState extends State<PinSetupScreen>
                 ),
               ),
             ),
-            // Keypad pinned at the bottom — always fully visible.
             Padding(
               padding: const EdgeInsets.fromLTRB(32, 0, 32, 32),
               child: PinKeypad(
                 onDigit: _onDigit,
                 onBackspace: _onBackspace,
                 disabled: _loading || _mismatch,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBiometricOffer(BuildContext context) {
+    final theme = Theme.of(context);
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        title: const Text('Создание PIN'),
+        backgroundColor: AppColors.background,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        automaticallyImplyLeading: false, // PIN is saved; can't go back
+      ),
+      body: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 32),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const SizedBox(height: 48),
+                    Center(
+                      child: Container(
+                        width: 80,
+                        height: 80,
+                        decoration: const BoxDecoration(
+                          color: AppColors.purpleSoft,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.fingerprint_rounded,
+                          color: AppColors.purple,
+                          size: 44,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    Text(
+                      'Включить биометрию?',
+                      style: theme.textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.navy,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Используйте Touch ID или Face ID\nдля входа без PIN-кода',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: AppColors.navyMuted,
+                        height: 1.5,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 40),
+                  ],
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(32, 0, 32, 32),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  AppButton(
+                    label: 'Включить биометрию',
+                    loading: _bioLoading,
+                    onPressed: _bioLoading ? null : _enableBiometric,
+                  ),
+                  const SizedBox(height: 10),
+                  TextButton(
+                    onPressed: _bioLoading ? null : _skipBiometric,
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppColors.navyMuted,
+                      textStyle: const TextStyle(
+                        fontFamily: 'NunitoSans',
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      minimumSize: const Size.fromHeight(44),
+                    ),
+                    child: const Text('Пропустить'),
+                  ),
+                ],
               ),
             ),
           ],
