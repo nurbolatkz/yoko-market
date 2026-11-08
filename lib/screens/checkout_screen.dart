@@ -401,6 +401,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           builder: (_) => OrderConfirmationScreen(
             result: result,
             expectedTotal: confirmedTotal,
+            address: address,
+            promoDiscount: _estimate?.promoDiscount ?? 0,
+            bonusUsed: _estimate?.bonusApplied ?? 0,
           ),
         ),
       );
