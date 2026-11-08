@@ -66,7 +66,7 @@ void main() {
         'pending_payment': 'Ожидает оплаты',
         'payment_received': 'Оплата получена',
         'confirmed': 'Подтверждён',
-        'shipped': 'В доставке',
+        'shipped': 'В пути',
         'delivered': 'Доставлен',
         'cancelled': 'Отменён',
       };
