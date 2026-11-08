@@ -26,7 +26,12 @@ Widget _wrap(Widget child) => MaterialApp(
 class _Harness {
   _Harness({String? correctPin}) {
     store = InMemoryKeyValueStore();
-    service = FastLoginService(storage: store);
+    // FakeBiometrics(available: false) avoids platform channel calls in widget
+    // tests. Biometric-specific tests create their own service with FakeBiometrics.
+    service = FastLoginService(
+      storage: store,
+      biometrics: FakeBiometrics(available: false),
+    );
     _successFlag = false;
     _forgotFlag = false;
     if (correctPin != null) {
@@ -233,7 +238,11 @@ void main() {
       // trigger FastLoginWipedError → onForgotPin.
       var fakeNow = DateTime.now().millisecondsSinceEpoch;
       final store = InMemoryKeyValueStore();
-      final service = FastLoginService(storage: store, nowMs: () => fakeNow);
+      final service = FastLoginService(
+        storage: store,
+        biometrics: FakeBiometrics(available: false),
+        nowMs: () => fakeNow,
+      );
       await service.setupPin('5555');
 
       // Attempts 1–3: return false
@@ -275,6 +284,106 @@ void main() {
       await tester.tap(find.text('Забыли PIN?'));
       await tester.pump();
       expect(h.forgotTapped, isTrue);
+    });
+  });
+
+  // ── PinEntryScreen — biometrics ──────────────────────────────────────────────
+
+  group('PinEntryScreen — biometrics', () {
+    testWidgets('no biometrics: fingerprint button not shown', (tester) async {
+      final store = InMemoryKeyValueStore();
+      final bio = FakeBiometrics(available: false);
+      final service = FastLoginService(storage: store, biometrics: bio);
+      await service.setupPin('1234');
+
+      final widget = PinEntryScreen(fastLoginService: service);
+      await tester.pumpWidget(_wrap(widget));
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.byIcon(Icons.fingerprint_rounded), findsNothing);
+    });
+
+    testWidgets('biometrics available but fail: button shown, PIN entry active',
+        (tester) async {
+      final store = InMemoryKeyValueStore();
+      final bio = FakeBiometrics(available: true, result: false);
+      final service = FastLoginService(storage: store, biometrics: bio);
+      await service.setupPin('1234');
+
+      var succeeded = false;
+      final widget = PinEntryScreen(
+        fastLoginService: service,
+        onSuccess: () => succeeded = true,
+      );
+      await tester.pumpWidget(_wrap(widget));
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.byIcon(Icons.fingerprint_rounded), findsOneWidget);
+      expect(succeeded, isFalse);
+    });
+
+    testWidgets('auto-trigger on open: success calls onSuccess', (tester) async {
+      final store = InMemoryKeyValueStore();
+      final bio = FakeBiometrics(available: true, result: true);
+      final service = FastLoginService(storage: store, biometrics: bio);
+      await service.setupPin('1234');
+
+      var succeeded = false;
+      final widget = PinEntryScreen(
+        fastLoginService: service,
+        onSuccess: () => succeeded = true,
+      );
+      await tester.pumpWidget(_wrap(widget));
+      await tester.pump();
+      await tester.pump();
+
+      expect(succeeded, isTrue);
+    });
+
+    testWidgets('manual tap on fingerprint button succeeds', (tester) async {
+      final store = InMemoryKeyValueStore();
+      final bio = FakeBiometrics(available: true, result: false);
+      final service = FastLoginService(storage: store, biometrics: bio);
+      await service.setupPin('1234');
+
+      var succeeded = false;
+      final widget = PinEntryScreen(
+        fastLoginService: service,
+        onSuccess: () => succeeded = true,
+      );
+      await tester.pumpWidget(_wrap(widget));
+      await tester.pump();
+      await tester.pump(); // auto-trigger ran and failed
+
+      bio.result = true;
+      await tester.tap(find.byIcon(Icons.fingerprint_rounded));
+      await tester.pump();
+      await tester.pump();
+
+      expect(succeeded, isTrue);
+    });
+
+    testWidgets('biometric button hidden when locked', (tester) async {
+      final store = InMemoryKeyValueStore();
+      final bio = FakeBiometrics(available: true, result: false);
+      final service = FastLoginService(storage: store, biometrics: bio);
+      await service.setupPin('5555');
+
+      final widget = PinEntryScreen(fastLoginService: service);
+      await tester.pumpWidget(_wrap(widget));
+      await tester.pump();
+      await tester.pump(); // settle auto-trigger
+
+      for (var i = 0; i < 3; i++) {
+        await _typePin(tester, '9999');
+        await tester.pump(const Duration(milliseconds: 500));
+      }
+      await _typePin(tester, '9999'); // 4th → FastLoginLockedError
+      await tester.pump();
+
+      expect(find.byIcon(Icons.fingerprint_rounded), findsNothing);
     });
   });
 

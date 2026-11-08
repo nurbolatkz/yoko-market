@@ -291,6 +291,18 @@ class FastLoginService {
     return false;
   }
 
+  /// Returns true when the device has usable biometric hardware.
+  ///
+  /// Catches all errors (e.g. MissingPluginException in widget tests or on
+  /// unsupported platforms) and returns false instead of throwing.
+  Future<bool> canUseBiometrics() async {
+    try {
+      return await _biometrics.canCheck();
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// Attempts biometric authentication.
   ///
   /// Returns `true` on success. Returns `false` if biometrics is unavailable,

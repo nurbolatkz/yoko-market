@@ -21,10 +21,14 @@ Widget _wrap(Widget child) => MaterialApp(
     );
 
 class _PinHarness {
-  _PinHarness()
+  _PinHarness({FastLoginBiometrics? biometrics})
     : store = InMemoryKeyValueStore(),
       _completedFlag = false {
-    service = FastLoginService(storage: store);
+    // Default to no biometrics to avoid platform channel calls in widget tests.
+    service = FastLoginService(
+      storage: store,
+      biometrics: biometrics ?? FakeBiometrics(available: false),
+    );
     widget = PinSetupScreen(
       fastLoginService: service,
       onComplete: () => _completedFlag = true,
@@ -230,6 +234,76 @@ void main() {
       await _typePin(tester, '1111');
       await tester.pumpAndSettle();
       expect(h.completed, isFalse);
+    });
+  });
+
+  // ── PinSetupScreen — biometric phase ────────────────────────────────────────
+
+  group('PinSetupScreen — biometric phase', () {
+    Future<void> reachPhase2(WidgetTester t, _PinHarness h) async {
+      await t.pumpWidget(_wrap(h.widget));
+      await _typePin(t, '5555');
+      await t.pumpAndSettle();
+    }
+
+    Future<void> confirmPin(WidgetTester t) async {
+      await _typePin(t, '5555');
+      await t.pumpAndSettle();
+    }
+
+    testWidgets('no biometrics: proceeds directly to onComplete', (tester) async {
+      final bio = FakeBiometrics(available: false);
+      final h = _PinHarness(biometrics: bio);
+      await reachPhase2(tester, h);
+      await confirmPin(tester);
+      expect(h.completed, isTrue);
+      expect(find.text('Включить биометрию?'), findsNothing);
+    });
+
+    testWidgets('biometrics available: shows offer screen', (tester) async {
+      final bio = FakeBiometrics(available: true, result: false);
+      final h = _PinHarness(biometrics: bio);
+      await reachPhase2(tester, h);
+      await confirmPin(tester);
+      expect(h.completed, isFalse);
+      expect(find.text('Включить биометрию?'), findsOneWidget);
+      expect(find.text('Включить биометрию'), findsOneWidget);
+      expect(find.text('Пропустить'), findsOneWidget);
+    });
+
+    testWidgets('"Пропустить" skips biometric and calls onComplete', (tester) async {
+      final bio = FakeBiometrics(available: true, result: false);
+      final h = _PinHarness(biometrics: bio);
+      await reachPhase2(tester, h);
+      await confirmPin(tester);
+      expect(find.text('Включить биометрию?'), findsOneWidget);
+      await tester.tap(find.text('Пропустить'));
+      await tester.pumpAndSettle();
+      expect(h.completed, isTrue);
+    });
+
+    testWidgets('"Включить биометрию" triggers challenge and calls onComplete',
+        (tester) async {
+      final bio = FakeBiometrics(available: true, result: true);
+      final h = _PinHarness(biometrics: bio);
+      await reachPhase2(tester, h);
+      await confirmPin(tester);
+      expect(find.text('Включить биометрию?'), findsOneWidget);
+      await tester.tap(find.text('Включить биометрию'));
+      await tester.pumpAndSettle();
+      expect(h.completed, isTrue);
+    });
+
+    testWidgets('"Включить" with failed biometric still calls onComplete',
+        (tester) async {
+      // Even if the platform challenge fails, PIN is already saved — proceed.
+      final bio = FakeBiometrics(available: true, result: false);
+      final h = _PinHarness(biometrics: bio);
+      await reachPhase2(tester, h);
+      await confirmPin(tester);
+      await tester.tap(find.text('Включить биометрию'));
+      await tester.pumpAndSettle();
+      expect(h.completed, isTrue);
     });
   });
 }
