@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../models/order.dart';
 import '../providers/address_provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/orders_provider.dart';
@@ -11,6 +12,7 @@ import 'auth/account_recovery_screen.dart';
 import 'auth/phone_screen.dart';
 import 'delivery_info_screen.dart';
 import 'invite_screen.dart';
+import 'order_detail_screen.dart';
 import 'orders_screen.dart';
 import 'reorder_screen.dart';
 import 'settings_screen.dart';
@@ -198,7 +200,14 @@ class _AuthenticatedViewState extends State<_AuthenticatedView> {
   Widget build(BuildContext context) {
     final user = widget.auth.user!;
     final op = context.watch<OrdersProvider>();
-    final lastDelivered = (!op.loading && op.error == null)
+    final ordersReady = !op.loading && op.error == null;
+    final activeOrder = ordersReady
+        ? op.orders
+            .where((o) =>
+                o.status == 'shipped' || o.status == 'confirmed')
+            .firstOrNull
+        : null;
+    final lastDelivered = ordersReady
         ? op.orders.where((o) => o.status == 'delivered').firstOrNull
         : null;
 
@@ -236,7 +245,21 @@ class _AuthenticatedViewState extends State<_AuthenticatedView> {
             ),
           ),
 
-          // 3. Reorder button — only visible when a delivered order exists
+          // 3. Active order card — visible when an order is confirmed or shipped
+          if (activeOrder != null) ...[
+            const SizedBox(height: 12),
+            _ActiveOrderCard(
+              order: activeOrder,
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => OrderDetailScreen(order: activeOrder),
+                ),
+              ),
+            ),
+          ],
+
+          // 4. Reorder button — only visible when a delivered order exists
           if (lastDelivered != null) ...[
             const SizedBox(height: 12),
             _ReorderButton(
@@ -249,7 +272,7 @@ class _AuthenticatedViewState extends State<_AuthenticatedView> {
             ),
           ],
 
-          // 4. Menu
+          // 5. Menu
           const SizedBox(height: 16),
           _buildMenu(context),
         ],
@@ -486,6 +509,74 @@ class _LoyaltyCard extends StatelessWidget {
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.75),
                 fontSize: 12,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Active order card ─────────────────────────────────────────────────────────
+
+class _ActiveOrderCard extends StatelessWidget {
+  const _ActiveOrderCard({required this.order, required this.onTap});
+
+  final OrderSummary order;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final statusLabel =
+        order.status == 'shipped' ? 'В пути' : 'Подтверждён';
+    final icon = order.status == 'shipped'
+        ? Icons.local_shipping_outlined
+        : Icons.check_circle_outline_rounded;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: AppColors.purpleSoft,
+          borderRadius: AppRadii.cardBorder,
+          border: Border.all(color: AppColors.lavenderDeep),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 20, color: AppColors.purple),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Заказ № ${order.orderNumber}',
+                    style: const TextStyle(
+                      color: AppColors.navy,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    statusLabel,
+                    style: const TextStyle(
+                      color: AppColors.purple,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Text(
+              'Подробнее →',
+              style: TextStyle(
+                color: AppColors.purple,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ],
