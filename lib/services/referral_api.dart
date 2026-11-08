@@ -20,7 +20,7 @@ class ReferralInfo {
     return ReferralInfo(
       code: code,
       inviteLink: j['invite_link'] as String? ??
-          (code.isNotEmpty ? 'https://yoko-sun.kz/invite/$code' : ''),
+          (code.isNotEmpty ? '${AppConfig.inviteDomain}/invite/$code' : ''),
       bonusReferrer: (j['bonus_referrer'] as num?)?.toInt() ?? 300,
       bonusUser: (j['bonus_user'] as num?)?.toInt() ?? 1000,
     );

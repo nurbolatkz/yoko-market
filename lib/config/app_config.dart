@@ -13,4 +13,14 @@ abstract final class AppConfig {
 
   static String get apiOrigin =>
       apiBaseUrl.replaceFirst(RegExp(r'/api/v1/?$'), '');
+
+  // The public-facing domain used in referral invite links and deep links.
+  // The same Django backend serves both dashboard.yoko-sun.kz (admin) and
+  // app.yoko-sun.kz (mobile API + invite links). Invite links use the
+  // mobile-facing domain so Android App Links / iOS Universal Links
+  // verification is against app.yoko-sun.kz, not the admin dashboard.
+  static const inviteDomain = String.fromEnvironment(
+    'INVITE_DOMAIN',
+    defaultValue: 'https://app.yoko-sun.kz',
+  );
 }

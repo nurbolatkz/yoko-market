@@ -6,9 +6,10 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../providers/auth_provider.dart';
+import '../../services/pending_invite.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/ui/app_button.dart';
-import 'profile_setup_screen.dart';
+import 'invite_code_screen.dart';
 
 class OtpScreen extends StatefulWidget {
   const OtpScreen({
@@ -123,8 +124,14 @@ class _OtpScreenState extends State<OtpScreen> {
         if (!mounted) return;
         final auth = context.read<AuthProvider>();
         if ((auth.user?.fullName ?? '').isEmpty) {
+          // New user: show invite code screen (pre-filled from deep link if
+          // available), which then leads to ProfileSetupScreen.
+          final pendingCode = await PendingInvite.consume();
+          if (!mounted) return;
           await Navigator.of(context).push<void>(
-            MaterialPageRoute(builder: (_) => const ProfileSetupScreen()),
+            MaterialPageRoute(
+              builder: (_) => InviteCodeScreen(pendingCode: pendingCode),
+            ),
           );
           if (!mounted) return;
         }
