@@ -119,8 +119,11 @@ class _PromotionDetailScreenState extends State<PromotionDetailScreen> {
   }
 
   String get _appBarTitle {
-    if (_state != _LoadState.loaded) return 'Акция';
-    return _data['promo_type'] == 'giveaway' ? 'Розыгрыш' : 'Акция';
+    if (_state != _LoadState.loaded) return 'Подборка';
+    return switch (_data['promo_type'] as String? ?? '') {
+      'giveaway' => 'Розыгрыш',
+      _ => 'Подборка',
+    };
   }
 }
 
@@ -262,13 +265,13 @@ class _ContentBody extends StatelessWidget {
           if (imageUrl != null && imageUrl.isNotEmpty)
             _HeroImage(imageUrl: imageUrl),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (badge != null && badge.isNotEmpty) ...[
                   _BadgeChip(label: badge),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 10),
                 ],
                 Text(
                   title,
@@ -278,7 +281,7 @@ class _ContentBody extends StatelessWidget {
                   ),
                 ),
                 if (subtitle != null && subtitle.isNotEmpty) ...[
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
                   Text(
                     subtitle,
                     style: Theme.of(context)
@@ -288,13 +291,13 @@ class _ContentBody extends StatelessWidget {
                   ),
                 ],
                 if (validFrom != null || validUntil != null) ...[
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
                   _DateRow(validFrom: validFrom, validUntil: validUntil, isEnded: isEnded),
                 ],
 
                 // ── Rich sections ──────────────────────────────────────
                 for (final section in sections) ...[
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 20),
                   _SectionWidget(section: section),
                 ],
 
@@ -302,11 +305,11 @@ class _ContentBody extends StatelessWidget {
                 if (sections.isEmpty &&
                     fullDescription != null &&
                     fullDescription.isNotEmpty) ...[
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 16),
                   const Divider(color: AppColors.border),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 16),
                   Text(
-                    'Условия',
+                    'О подборке',
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
                       color: AppColors.navy,
                       fontWeight: FontWeight.w700,
@@ -317,21 +320,24 @@ class _ContentBody extends StatelessWidget {
                   Text(
                     fullDescription,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: AppColors.navyMuted,
+                      color: AppColors.navy,
                       height: 1.55,
                     ),
                   ),
                 ],
 
-                if (hasAction && !isEnded) ...[
-                  const SizedBox(height: 28),
-                  _ActionButton(
-                    actionType: actionType,
-                    actionValue: actionValue,
-                    loading: actionLoading,
-                    onProductAction: onProductAction,
-                    onCatalogAction: onCatalogAction,
-                  ),
+                if (!isEnded) ...[
+                  const SizedBox(height: 24),
+                  if (hasAction)
+                    _ActionButton(
+                      actionType: actionType,
+                      actionValue: actionValue,
+                      loading: actionLoading,
+                      onProductAction: onProductAction,
+                      onCatalogAction: onCatalogAction,
+                    )
+                  else
+                    _CatalogButton(onTap: onCatalogAction),
                 ],
               ],
             ),
@@ -669,19 +675,18 @@ class _HeroImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AspectRatio(
-      aspectRatio: 16 / 9,
-      child: Image.network(
-        imageUrl,
-        fit: BoxFit.cover,
-        errorBuilder: (_, e, st) => Container(
-          color: AppColors.purpleSoft,
-          alignment: Alignment.center,
-          child: const Icon(
-            Icons.broken_image_outlined,
-            size: 48,
-            color: AppColors.navyMuted,
-          ),
+    return Image.network(
+      imageUrl,
+      width: double.infinity,
+      fit: BoxFit.fitWidth,
+      errorBuilder: (_, e, st) => Container(
+        height: 200,
+        color: AppColors.purpleSoft,
+        alignment: Alignment.center,
+        child: const Icon(
+          Icons.broken_image_outlined,
+          size: 48,
+          color: AppColors.navyMuted,
         ),
       ),
     );
@@ -804,6 +809,30 @@ class _ActionButton extends StatelessWidget {
         label: Text(
           isProduct ? 'Посмотреть товар' : 'Перейти в каталог',
         ),
+        style: FilledButton.styleFrom(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CatalogButton extends StatelessWidget {
+  const _CatalogButton({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: FilledButton.icon(
+        onPressed: onTap,
+        icon: const Icon(Icons.category_outlined, size: 20),
+        label: const Text('Смотреть товары'),
         style: FilledButton.styleFrom(
           padding: const EdgeInsets.symmetric(vertical: 16),
           shape: RoundedRectangleBorder(

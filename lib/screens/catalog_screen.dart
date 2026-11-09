@@ -304,11 +304,15 @@ class _RetryImage extends StatefulWidget {
     required this.url,
     required this.fit,
     this.alignment = Alignment.center,
+    this.cacheWidth = 400,
   });
 
   final String url;
   final BoxFit fit;
   final Alignment alignment;
+  // Physical pixels for the in-memory decode cache. 400 is fine for
+  // small product thumbnails; pass null or a larger value for banners.
+  final int? cacheWidth;
 
   @override
   State<_RetryImage> createState() => _RetryImageState();
@@ -324,7 +328,7 @@ class _RetryImageState extends State<_RetryImage> {
       key: ValueKey('${widget.url}_$_attempt'),
       fit: widget.fit,
       alignment: widget.alignment,
-      cacheWidth: 400,
+      cacheWidth: widget.cacheWidth,
       loadingBuilder: (ctx, child, prog) {
         if (prog == null) return child;
         return const ColoredBox(color: AppColors.lavenderMid);
@@ -560,10 +564,19 @@ class _BannerCard extends StatelessWidget {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                _RetryImage(
-                  url: banner.imageUrl!,
-                  fit: BoxFit.cover,
-                  alignment: Alignment.center,
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final physicalW =
+                        (constraints.maxWidth *
+                                MediaQuery.devicePixelRatioOf(context))
+                            .ceil();
+                    return _RetryImage(
+                      url: banner.imageUrl!,
+                      fit: BoxFit.cover,
+                      alignment: Alignment.center,
+                      cacheWidth: physicalW.clamp(800, 2048),
+                    );
+                  },
                 ),
                 Positioned(
                   left: 12,
@@ -917,13 +930,17 @@ class _Categories extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Show all categories from the API; keep their order.
     if (categories.isEmpty) return const SizedBox.shrink();
 
+    // Show at most 8 (4 × 2) on the home screen.
+    final visible = categories.length > 8
+        ? categories.sublist(0, 8)
+        : categories;
+
     final rows = <Widget>[];
-    for (var start = 0; start < categories.length; start += 4) {
-      final end = (start + 4).clamp(0, categories.length);
-      final rowItems = categories.sublist(start, end);
+    for (var start = 0; start < visible.length; start += 4) {
+      final end = (start + 4).clamp(0, visible.length);
+      final rowItems = visible.sublist(start, end);
       final rowWidgets = [
         ...rowItems.map(_buildItem),
         ...List.generate(
