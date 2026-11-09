@@ -38,9 +38,9 @@ class OtpScreen extends StatefulWidget {
 }
 
 class _OtpScreenState extends State<OtpScreen> {
-  // Backend constants — kept in sync with mobile_auth.py:
+  // Backend constants — kept in sync with redis_service.py:
   //   _OTP_RATE_LIMIT = 5 per 60 s → resend cooldown = 60 s
-  //   _OTP_TTL = 300 s              → passed in via widget.ttl
+  //   _OTP_TTL = 600 s              → passed in via widget.ttl
   static const int _resendDelay = 60;
 
   final _otpController = TextEditingController();
@@ -193,6 +193,7 @@ class _OtpScreenState extends State<OtpScreen> {
   String _mapResendError(String? detail) => switch (detail) {
     'too_many_requests' => 'Слишком много запросов. Подождите минуту.',
     'sms_not_configured' => 'SMS-сервис временно недоступен.',
+    'sms_send_failed' => 'Не удалось отправить SMS. Попробуйте снова через минуту.',
     'invalid_phone' => 'Неверный номер телефона.',
     _ => 'Ошибка соединения. Проверьте сеть.',
   };
