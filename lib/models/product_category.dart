@@ -6,12 +6,14 @@ class ProductCategory {
     required this.name,
     this.slug,
     this.imageUrl,
+    this.setHome = false,
   });
 
   final String id;
   final String name;
   final String? slug;
   final String? imageUrl;
+  final bool setHome;
 
   factory ProductCategory.fromJson(Map<String, dynamic> json) {
     return ProductCategory(
@@ -19,6 +21,7 @@ class ProductCategory {
       name: json['name'] as String? ?? '',
       slug: json['slug'] as String?,
       imageUrl: _resolveImageUrl(json['image']),
+      setHome: json['set_home'] as bool? ?? false,
     );
   }
 }

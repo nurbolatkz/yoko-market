@@ -48,6 +48,9 @@ class MarketProvider with ChangeNotifier {
   List<ProductCategory> get categoryObjects =>
       List.unmodifiable(_catalogCategories);
 
+  List<ProductCategory> get homeCategoryObjects =>
+      List.unmodifiable(_catalogCategories.where((c) => c.setHome).toList());
+
   String _selectedCategory = 'All';
   String get selectedCategory => _selectedCategory;
 
