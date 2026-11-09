@@ -1,8 +1,20 @@
 ---
-description: YokoMarket Flutter design system — read before creating or modifying any UI screen or widget.
+description: >
+  SUPERSEDED — load yoko-mobile-design instead.
+  This file is kept as a redirect; the authoritative skill is
+  .claude/skills/yoko-mobile-design/SKILL.md.
 ---
 
-# YokoMarket Design System
+> **This skill has been superseded by `yoko-mobile-design`.**
+> Load `.claude/skills/yoko-mobile-design/SKILL.md` for all UI work.
+> Known errors in this file (now corrected in the new skill):
+> - Font was listed as `Roboto` → actual font is `NunitoSans`
+> - `background` was listed as `#FAF9F6` → actual is `#EDE8FA`
+> - `border` was listed as `#EEECD3` → actual is `#EEECF3`
+
+---
+
+# YokoMarket Design System (archived)
 
 ## 1. Colour palette
 
