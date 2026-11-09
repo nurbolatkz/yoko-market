@@ -548,8 +548,8 @@ class _BannerCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Image-only banner: the image is designed with its own layout/text.
-    // Showing a text overlay on top would duplicate information.
+    // Image-only banner: image carries its own design — no duplicate text overlay.
+    // A "Подробнее" chip sits in the bottom-left corner so users know it's tappable.
     if (banner.imageUrl != null) {
       return GestureDetector(
         onTap: () => _onTap(context),
@@ -557,10 +557,44 @@ class _BannerCard extends StatelessWidget {
           borderRadius: AppRadii.cardBorder,
           child: SizedBox(
             height: height,
-            child: _RetryImage(
-              url: banner.imageUrl!,
-              fit: BoxFit.cover,
-              alignment: Alignment.center,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                _RetryImage(
+                  url: banner.imageUrl!,
+                  fit: BoxFit.cover,
+                  alignment: Alignment.center,
+                ),
+                Positioned(
+                  left: 12,
+                  bottom: 12,
+                  child: GestureDetector(
+                    onTap: () => _onTap(context),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withAlpha(230),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'Подробнее',
+                            style: TextStyle(
+                              color: AppColors.navy,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          SizedBox(width: 4),
+                          Icon(Icons.arrow_forward_ios_rounded, size: 10, color: AppColors.navy),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ),
