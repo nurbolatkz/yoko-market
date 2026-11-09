@@ -93,7 +93,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
                           const SizedBox(height: 24),
                         ],
                         _Categories(
-                          categories: provider.categoryObjects,
+                          categories: provider.homeCategoryObjects,
                           onSelected: widget.onCategorySelected,
                           onSeeAll: () => widget.onCategorySelected('All'),
                         ),
