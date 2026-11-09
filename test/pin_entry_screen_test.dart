@@ -419,8 +419,7 @@ void main() {
       await svc.setupPin('1234');
 
       final screen = buildStartScreenForTest(
-        showWelcome: false,
-        onboardingShown: true,
+        introShown: true,
         testFastLoginEnabled: false, // flag off
         fastLoginService: svc,
       );
@@ -437,8 +436,7 @@ void main() {
       await svc.setupPin('1234');
 
       final screen = buildStartScreenForTest(
-        showWelcome: false,
-        onboardingShown: true,
+        introShown: true,
         testFastLoginEnabled: true,
         fastLoginService: svc,
       );
@@ -453,8 +451,7 @@ void main() {
       final svc = FastLoginService(storage: store);
 
       final screen = buildStartScreenForTest(
-        showWelcome: false,
-        onboardingShown: true,
+        introShown: true,
         testFastLoginEnabled: true,
         fastLoginService: svc,
       );

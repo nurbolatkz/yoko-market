@@ -12,7 +12,6 @@ import 'providers/auth_provider.dart';
 import 'providers/market_provider.dart';
 import 'providers/orders_provider.dart';
 import 'providers/wishlist_provider.dart';
-import 'screens/auth/onboarding_screen.dart';
 import 'screens/auth/phone_screen.dart';
 import 'screens/auth/pin_entry_screen.dart';
 import 'screens/auth/pin_setup_screen.dart';
@@ -60,31 +59,30 @@ void main() async {
     } catch (_) {}
   }
 
-  final showWelcome = !_isRunningUnderTest();
-  bool onboardingShown = false;
+  // intro_shown: true after user dismisses WelcomeScreen for the first time.
+  // Both the animation and the landing screen are skipped on subsequent launches.
+  bool introShown = false;
   if (!_isRunningUnderTest()) {
     try {
       final prefs = await SharedPreferences.getInstance()
           .timeout(const Duration(seconds: 2));
-      onboardingShown = prefs.getBool('onboarding_shown') ?? false;
+      introShown = prefs.getBool('intro_shown') ?? false;
     } catch (_) {
-      onboardingShown = true;
+      introShown = true; // on failure, skip intro
     }
   }
-  runApp(YokoMarketApp(showWelcome: showWelcome, onboardingShown: onboardingShown));
+  runApp(YokoMarketApp(introShown: introShown));
 }
 
 class YokoMarketApp extends StatelessWidget {
   const YokoMarketApp({
     super.key,
     this.marketProvider,
-    this.showWelcome = false,
-    this.onboardingShown = true,
+    this.introShown = true,
   });
 
   final MarketProvider? marketProvider;
-  final bool showWelcome;
-  final bool onboardingShown;
+  final bool introShown;
 
   @override
   Widget build(BuildContext context) {
@@ -144,28 +142,34 @@ class YokoMarketApp extends StatelessWidget {
         debugShowCheckedModeBanner: false,
         theme: AppTheme.light,
         themeMode: ThemeMode.light,
-        home: _StartScreen(showWelcome: showWelcome, onboardingShown: onboardingShown),
+        home: _StartScreen(introShown: introShown),
       ),
     );
   }
 }
 
-/// Shows [WelcomeScreen] on every cold start (when [showWelcome]); goes straight to [MainScreen]
-/// otherwise. [MainScreen] is always in the tree so API calls start
-/// immediately — the animation never delays data loading.
+/// Coordinates the first-launch intro flow and the ongoing PIN gate.
+///
+/// First launch ([introShown] == false):
+///   1. [WelcomeOverlay] animation plays (2.8 s, tap to skip).
+///   2. After animation: [WelcomeScreen] hero + 2 buttons.
+///   3. User presses a button → `intro_shown` written to prefs → [MainScreen].
+///
+/// Subsequent launches ([introShown] == true): straight to [MainScreen].
+///
+/// [MainScreen] is always in the widget tree so API calls start immediately —
+/// the animation never delays data loading.
 ///
 /// When [AppConfig.fastLoginEnabled] is true and the user has set up a PIN,
-/// [PinEntryScreen] is shown before [MainScreen] is revealed.
+/// [PinEntryScreen] gates the app before anything else is revealed.
 class _StartScreen extends StatefulWidget {
   const _StartScreen({
-    required this.showWelcome,
-    this.onboardingShown = true,
-    this.testFastLoginEnabled, // null = use AppConfig.fastLoginEnabled
-    this.fastLoginService,     // null = use FastLoginService() (production)
+    required this.introShown,
+    this.testFastLoginEnabled,
+    this.fastLoginService,
   });
 
-  final bool showWelcome;
-  final bool onboardingShown;
+  final bool introShown;
   final bool? testFastLoginEnabled;
   final FastLoginService? fastLoginService;
 
@@ -174,7 +178,8 @@ class _StartScreen extends StatefulWidget {
 }
 
 class _StartScreenState extends State<_StartScreen> {
-  late bool _showOverlay;
+  late bool _showAnimation;
+  late bool _showWelcome;
 
   /// null = PIN gate check in progress, true/false = resolved.
   bool? _pinNeeded;
@@ -183,7 +188,9 @@ class _StartScreenState extends State<_StartScreen> {
   @override
   void initState() {
     super.initState();
-    _showOverlay = widget.showWelcome && !_isRunningUnderTest();
+    final firstLaunch = !widget.introShown && !_isRunningUnderTest();
+    _showAnimation = firstLaunch;
+    _showWelcome = firstLaunch;
     _listenForLinks();
     _checkPinGate();
   }
@@ -201,9 +208,10 @@ class _StartScreenState extends State<_StartScreen> {
       _pinNeeded = enabled;
       if (enabled) {
         _pinService = svc;
-        // Suppress welcome overlay when gating with PIN — it would appear
-        // behind the PIN screen and then again after unlock, which is jarring.
-        _showOverlay = false;
+        // Suppress intro when gating with PIN — playing the animation behind
+        // the PIN screen and then again after unlock would be jarring.
+        _showAnimation = false;
+        _showWelcome = false;
       }
     });
   }
@@ -219,26 +227,16 @@ class _StartScreenState extends State<_StartScreen> {
   }
 
   Future<void> _onForgotPin() async {
-    // Wipe fast-login data before re-auth so there is no stale PIN hash
-    // if the user cancels mid-flow.
     await _pinService?.disable();
     if (!mounted) return;
-
-    // Push PhoneScreen for SMS identity verification.
-    // PhoneScreen(forgotPin: true) pops with true on OTP success.
     final authenticated = await Navigator.of(context).push<bool>(
       MaterialPageRoute(builder: (_) => const PhoneScreen(forgotPin: true)),
     );
     if (!mounted) return;
-
     if (authenticated != true) {
-      // User cancelled recovery — fast login is already disabled,
-      // so just reveal the app without a PIN.
       setState(() { _pinNeeded = false; _pinService = null; });
       return;
     }
-
-    // Identity confirmed. Set up a new PIN.
     await Navigator.of(context).push<void>(
       MaterialPageRoute(
         builder: (_) => PinSetupScreen(
@@ -250,29 +248,25 @@ class _StartScreenState extends State<_StartScreen> {
     setState(() { _pinNeeded = false; _pinService = null; });
   }
 
-  void _onOverlayDone() {
-    setState(() => _showOverlay = false);
-    if (!widget.onboardingShown) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        final auth = context.read<AuthProvider>();
-        if (auth.state != AuthState.authenticated) {
-          Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const OnboardingScreen()),
-          );
-        }
-      });
-    }
+  void _onAnimationDone() {
+    // Animation finished → reveal the landing screen.
+    setState(() => _showAnimation = false);
+  }
+
+  void _onWelcomeDone() {
+    // User pressed a button → persist and reveal the app.
+    SharedPreferences.getInstance()
+        .then((p) => p.setBool('intro_shown', true))
+        .catchError((_) => false);
+    setState(() => _showWelcome = false);
   }
 
   @override
   Widget build(BuildContext context) {
-    // Brief splash while checking secure storage for the PIN gate.
     if (_pinNeeded == null) {
       return const ColoredBox(color: AppColors.background);
     }
 
-    // PIN gate: show PinEntryScreen as the root; MainScreen revealed on success.
     if (_pinNeeded!) {
       return PinEntryScreen(
         fastLoginService: _pinService,
@@ -281,23 +275,28 @@ class _StartScreenState extends State<_StartScreen> {
       );
     }
 
-    // Normal flow.
-    if (!_showOverlay) return const MainScreen();
-    return WelcomeScreen(onDone: _onOverlayDone);
+    // MainScreen always present so network requests fire immediately.
+    return Stack(
+      children: [
+        const MainScreen(),
+        if (_showAnimation)
+          WelcomeOverlay(onDone: _onAnimationDone),
+        if (!_showAnimation && _showWelcome)
+          WelcomeScreen(onDone: _onWelcomeDone),
+      ],
+    );
   }
 }
 
 /// Creates a [_StartScreen] with test-only overrides. Not for production use.
 @visibleForTesting
 Widget buildStartScreenForTest({
-  bool showWelcome = false,
-  bool onboardingShown = true,
+  bool introShown = true,
   bool? testFastLoginEnabled,
   FastLoginService? fastLoginService,
 }) =>
     _StartScreen(
-      showWelcome: showWelcome,
-      onboardingShown: onboardingShown,
+      introShown: introShown,
       testFastLoginEnabled: testFastLoginEnabled,
       fastLoginService: fastLoginService,
     );
