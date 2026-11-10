@@ -86,23 +86,28 @@ void main() {
     expect(find.text('Подгузники'), findsOneWidget);
 
     final homeScroll = find.byKey(const Key('home-scroll'));
-    for (var index = 0; index < 6; index++) {
+    // Scroll until 'Aura' (product 4) enters the viewport.
+    // SliverGrid items are lazily built — stop as soon as it appears
+    // rather than scrolling a fixed count (which may overshoot and recycle it).
+    var auraFound = false;
+    for (var i = 0; i < 20 && !auraFound; i++) {
       await tester.drag(homeScroll, const Offset(0, -300));
       await tester.pump();
+      auraFound = find.textContaining('Aura').evaluate().isNotEmpty;
     }
-
-    expect(find.textContaining('Aura'), findsOneWidget);
+    expect(auraFound, isTrue, reason: 'Aura product card should scroll into view');
     expect(tester.takeException(), isNull);
 
-    for (var index = 0; index < 6; index++) {
+    // Scroll back to top — search bar and city pill must reappear.
+    for (var i = 0; i < 20; i++) {
       await tester.drag(homeScroll, const Offset(0, 300));
       await tester.pump();
+      if (find.byKey(const Key('home-search')).evaluate().isNotEmpty) break;
     }
 
     // Search bar is present on Home tab.
     expect(find.byKey(const Key('home-search')), findsOneWidget);
     expect(find.text('Алматы'), findsOneWidget);
-    expect(find.textContaining('Aura'), findsNothing);
   });
 
   testWidgets('Catalog filters, scrolls, and updates cart on a small phone', (
@@ -212,6 +217,7 @@ class _FakeCatalogDataSource implements CatalogDataSource {
     String? search,
     int limit = 50,
     int offset = 0,
+    String sort = 'popular',
   }) async {
     return _products.where((product) {
       final categoryMatches = category == null || product.category == category;

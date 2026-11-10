@@ -74,6 +74,16 @@ class MarketProvider with ChangeNotifier {
   List<Product> get featuredProducts => List.unmodifiable(_featuredProducts);
   bool get featuredLoading => _featuredLoading;
 
+  List<Product> _bestSellerProducts = const [];
+  bool _bestSellersLoading = false;
+  List<Product> get bestSellerProducts => List.unmodifiable(_bestSellerProducts);
+  bool get bestSellersLoading => _bestSellersLoading;
+
+  List<Product> _newArrivalProducts = const [];
+  bool _newArrivalsLoading = false;
+  List<Product> get newArrivalProducts => List.unmodifiable(_newArrivalProducts);
+  bool get newArrivalsLoading => _newArrivalsLoading;
+
   List<BannerItem> _banners = const [];
   bool _bannersLoading = false;
   List<BannerItem> get banners => List.unmodifiable(_banners);
@@ -90,6 +100,32 @@ class MarketProvider with ChangeNotifier {
       _featuredProducts = await _catalogDataSource.getProducts(limit: 6);
     } catch (_) {}
     _featuredLoading = false;
+    notifyListeners();
+  }
+
+  Future<void> loadBestSellers() async {
+    _bestSellersLoading = true;
+    notifyListeners();
+    try {
+      _bestSellerProducts =
+          await _catalogDataSource.getProducts(limit: 6, sort: 'sales');
+    } catch (_) {
+      _bestSellerProducts = const [];
+    }
+    _bestSellersLoading = false;
+    notifyListeners();
+  }
+
+  Future<void> loadNewArrivals() async {
+    _newArrivalsLoading = true;
+    notifyListeners();
+    try {
+      _newArrivalProducts =
+          await _catalogDataSource.getProducts(limit: 6, sort: 'new');
+    } catch (_) {
+      _newArrivalProducts = const [];
+    }
+    _newArrivalsLoading = false;
     notifyListeners();
   }
 
@@ -250,7 +286,13 @@ class MarketProvider with ChangeNotifier {
   }
 
   Future<void> retryAll() async {
-    await Future.wait([loadCatalog(), loadFeatured(), loadBanners()]);
+    await Future.wait([
+      loadCatalog(),
+      loadFeatured(),
+      loadBanners(),
+      loadBestSellers(),
+      loadNewArrivals(),
+    ]);
   }
 
   // ── Cart ──────────────────────────────────────────────────────────────────
