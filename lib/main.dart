@@ -197,7 +197,9 @@ class _StartScreenState extends State<_StartScreen> {
 
   Future<void> _checkPinGate() async {
     final flagEnabled = widget.testFastLoginEnabled ?? AppConfig.fastLoginEnabled;
-    if (!flagEnabled) {
+    // Skip in test environment: FlutterSecureStorage has no platform channel
+    // in widget tests and would hang indefinitely.
+    if (!flagEnabled || _isRunningUnderTest()) {
       if (mounted) setState(() => _pinNeeded = false);
       return;
     }
@@ -263,6 +265,9 @@ class _StartScreenState extends State<_StartScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Watch auth state unconditionally so rebuilds fire when it changes.
+    final auth = context.watch<AuthProvider>();
+
     if (_pinNeeded == null) {
       return const ColoredBox(color: AppColors.background);
     }
@@ -273,6 +278,15 @@ class _StartScreenState extends State<_StartScreen> {
         onSuccess: () => setState(() { _pinNeeded = false; }),
         onForgotPin: _onForgotPin,
       );
+    }
+
+    // Belt-and-suspenders: if login completes via any path, auto-dismiss the
+    // welcome overlay. The primary path is WelcomeScreen._openLogin() passing
+    // onDone directly to PhoneScreen.onSuccess; this covers edge cases.
+    if (_showWelcome && auth.isAuthenticated) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _showWelcome) _onWelcomeDone();
+      });
     }
 
     // MainScreen always present so network requests fire immediately.

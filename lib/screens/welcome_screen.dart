@@ -542,14 +542,12 @@ class WelcomeScreen extends StatelessWidget {
   }
 
   void _openLogin(BuildContext context) {
-    Navigator.of(context).push(
+    Navigator.of(context).push<void>(
       MaterialPageRoute(
         builder: (_) => PhoneScreen(
-          onSuccess: () {
-            // onSuccess fires after OTP + profile setup are complete.
-            // AuthProvider is already authenticated at this point; _StartScreen
-            // will dismiss us via its auth listener.
-          },
+          // onSuccess fires after OTP + profile setup complete.
+          // Calling onDone dismisses this overlay so MainScreen is revealed.
+          onSuccess: onDone,
         ),
       ),
     );
