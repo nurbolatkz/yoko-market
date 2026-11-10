@@ -130,7 +130,7 @@ void main() {
       'нет такого',
     );
     await tester.pumpAndSettle();
-    expect(find.text('Товары не найдены'), findsOneWidget);
+    expect(find.text('Ничего не найдено'), findsOneWidget);
 
     await tester.tap(find.text('Сбросить фильтры'));
     await tester.pumpAndSettle();
@@ -195,8 +195,8 @@ class _FakeCatalogDataSource implements CatalogDataSource {
 
   @override
   Future<List<ProductCategory>> getCategories() async => const [
-    ProductCategory(id: '1', name: 'Подгузники'),
-    ProductCategory(id: '2', name: 'Салфетки'),
+    ProductCategory(id: '1', name: 'Подгузники', setHome: true),
+    ProductCategory(id: '2', name: 'Салфетки', setHome: true),
   ];
 
   @override
