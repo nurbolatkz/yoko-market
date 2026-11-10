@@ -17,8 +17,20 @@ abstract final class AppColors {
   static const yellow = Color(0xFFFFD84F);
   static const yellowSoft = Color(0xFFFFF8D6);
   static const border = Color(0xFFEEECF3);
-  static const success = Color(0xFF1B7F5E);
+
+  // ── Semantic status ──────────────────────────────────────────────────────────
+  /// Green for "in stock", "delivered", accrual, verified badges.
+  static const success = Color(0xFF23804A);
+  /// Pale green background for success chips / banners.
+  static const successSoft = Color(0xFFEAF7EF);
+  /// Red for errors, destructive actions, "out of stock", cancellations.
   static const error = Color(0xFFD92D2D);
+  /// Pale red background for error chips / inline messages.
+  static const errorSoft = Color(0xFFFFF0F0);
+  /// Amber for warnings (account deletion, irreversible actions).
+  static const warn = Color(0xFFB45309);
+  /// Pale amber background for warning chips / banners.
+  static const warnSoft = Color(0xFFFEF3C7);
 }
 
 abstract final class AppRadii {
