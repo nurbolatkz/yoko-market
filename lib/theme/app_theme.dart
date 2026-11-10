@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 
 abstract final class AppColors {
   static const background = Color(0xFFEDE8FA);
+  /// Near-white background for the redesigned Home screen.
+  /// Keeps lavender accents but reduces heavy lavender fills.
+  static const homeBackground = Color(0xFFF7F7FA);
   static const lavenderDeep = Color(0xFFD6CCEF);
   static const lavenderMid = Color(0xFFD8D0F0);
   static const surface = Colors.white;

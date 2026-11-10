@@ -162,13 +162,13 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         .clamp(0, _activeProduct.stockQuantity);
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.homeBackground,
       body: CustomScrollView(
         slivers: [
           SliverAppBar(
             expandedHeight: 300,
             pinned: true,
-            backgroundColor: AppColors.background,
+            backgroundColor: AppColors.homeBackground,
             surfaceTintColor: Colors.transparent,
             flexibleSpace: FlexibleSpaceBar(
               background: _Gallery(
@@ -205,38 +205,47 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             ],
           ),
           SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _PriceRow(product: _activeProduct),
-                  const SizedBox(height: 10),
-                  _NameRow(product: _activeProduct),
-                  const SizedBox(height: 10),
-                  _RatingStockRow(product: _activeProduct),
-                  if (_variants.isNotEmpty) ...[
-                    const SizedBox(height: 20),
-                    _SizeSelector(
-                      activeId: _activeProduct.id,
-                      baseProduct: _baseProduct,
-                      isBaseCurrent: _isCurrentVariant,
-                      variants: _variants,
-                      onSelect: _selectVariant,
-                    ),
+            child: Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(
+                  top: Radius.circular(24),
+                ),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _PriceRow(product: _activeProduct),
+                    const SizedBox(height: 10),
+                    _NameRow(product: _activeProduct),
+                    const SizedBox(height: 10),
+                    _RatingStockRow(product: _activeProduct),
+                    if (_variants.isNotEmpty) ...[
+                      const SizedBox(height: 20),
+                      _SizeSelector(
+                        activeId: _activeProduct.id,
+                        baseProduct: _baseProduct,
+                        isBaseCurrent: _isCurrentVariant,
+                        variants: _variants,
+                        onSelect: _selectVariant,
+                      ),
+                    ],
+                    if (_activeProduct.specs.isNotEmpty) ...[
+                      const SizedBox(height: 24),
+                      _SpecsSection(specs: _activeProduct.specs),
+                    ],
+                    if (_activeProduct.description.isNotEmpty) ...[
+                      const SizedBox(height: 24),
+                      _DescriptionSection(
+                          text: _activeProduct.description),
+                    ],
+                    const SizedBox(height: 28),
+                    _ReviewsSection(productId: _activeProduct.id),
+                    const SizedBox(height: 110),
                   ],
-                  if (_activeProduct.specs.isNotEmpty) ...[
-                    const SizedBox(height: 24),
-                    _SpecsSection(specs: _activeProduct.specs),
-                  ],
-                  if (_activeProduct.description.isNotEmpty) ...[
-                    const SizedBox(height: 24),
-                    _DescriptionSection(text: _activeProduct.description),
-                  ],
-                  const SizedBox(height: 28),
-                  _ReviewsSection(productId: _activeProduct.id),
-                  const SizedBox(height: 110),
-                ],
+                ),
               ),
             ),
           ),
@@ -294,7 +303,7 @@ class _Gallery extends StatelessWidget {
         : (fallbackUrl.isNotEmpty ? [fallbackUrl] : <String>[]);
     if (urls.isEmpty) {
       return Container(
-        color: AppColors.purpleSoft,
+        color: AppColors.homeBackground,
         alignment: Alignment.center,
         child: const Icon(Icons.image_outlined,
             size: 64, color: AppColors.navyMuted),

@@ -121,8 +121,9 @@ class _PromotionDetailScreenState extends State<PromotionDetailScreen> {
   String get _appBarTitle {
     if (_state != _LoadState.loaded) return 'Подборка';
     return switch (_data['promo_type'] as String? ?? '') {
-      'giveaway' => 'Розыгрыш',
-      _ => 'Подборка',
+      'giveaway'   => 'Розыгрыш',
+      'promotion'  => 'Акция',
+      _            => 'Подборка',
     };
   }
 }
@@ -251,7 +252,14 @@ class _ContentBody extends StatelessWidget {
     final validUntil = _parseDate(data['valid_until']);
     final actionType = data['action_type'] as String? ?? 'none';
     final actionValue = data['action_value'] as String?;
+    final promoType = data['promo_type'] as String? ?? '';
     final sections = (data['sections'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+
+    final descriptionHeading = switch (promoType) {
+      'giveaway'  => 'О розыгрыше',
+      'promotion' => 'Условия акции',
+      _           => 'О подборке',
+    };
 
     final hasAction = actionType != 'none' &&
         actionValue != null &&
@@ -307,9 +315,9 @@ class _ContentBody extends StatelessWidget {
                     fullDescription.isNotEmpty) ...[
                   const SizedBox(height: 16),
                   const Divider(color: AppColors.border),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
                   Text(
-                    'О подборке',
+                    descriptionHeading,
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
                       color: AppColors.navy,
                       fontWeight: FontWeight.w700,
@@ -675,20 +683,29 @@ class _HeroImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Image.network(
-      imageUrl,
-      width: double.infinity,
-      fit: BoxFit.fitWidth,
-      errorBuilder: (_, e, st) => Container(
-        height: 200,
-        color: AppColors.purpleSoft,
-        alignment: Alignment.center,
-        child: const Icon(
-          Icons.broken_image_outlined,
-          size: 48,
-          color: AppColors.navyMuted,
-        ),
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final physicalW = (constraints.maxWidth *
+                MediaQuery.devicePixelRatioOf(context))
+            .ceil();
+        return Image.network(
+          imageUrl,
+          width: double.infinity,
+          // fitWidth shows the full image at native aspect ratio — no cropping.
+          fit: BoxFit.fitWidth,
+          cacheWidth: physicalW.clamp(800, 2048),
+          errorBuilder: (_, _e, _st) => Container(
+            height: 200,
+            color: AppColors.homeBackground,
+            alignment: Alignment.center,
+            child: const Icon(
+              Icons.broken_image_outlined,
+              size: 48,
+              color: AppColors.navyMuted,
+            ),
+          ),
+        );
+      },
     );
   }
 }

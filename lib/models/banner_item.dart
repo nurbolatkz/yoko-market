@@ -13,6 +13,7 @@ class BannerItem {
     this.promoType,
     this.actionType = 'none',
     this.actionValue,
+    this.actionLabel,
     this.validUntil,
   });
 
@@ -31,6 +32,9 @@ class BannerItem {
   final String? promoType;
   final String actionType;
   final String? actionValue;
+  /// Human-readable CTA label from backend, e.g. "Выбрать подгузники".
+  /// Falls back to generic label when null.
+  final String? actionLabel;
   final DateTime? validUntil;
 
   bool get isPromoOrGiveaway =>
@@ -51,6 +55,7 @@ class BannerItem {
       promoType: json['promo_type'] as String?,
       actionType: json['action_type'] as String? ?? 'none',
       actionValue: json['action_value'] as String?,
+      actionLabel: json['action_label'] as String?,
       validUntil: _parseDateTime(json['valid_until']),
     );
   }

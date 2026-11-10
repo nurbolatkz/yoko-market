@@ -1,3 +1,4 @@
+export 'app_product_card.dart';
 export 'app_button.dart';
 export 'app_card.dart';
 export 'app_chip.dart';
