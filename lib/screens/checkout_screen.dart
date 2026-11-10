@@ -486,7 +486,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     final auth = context.watch<AuthProvider>();
     final phone = auth.user?.phone ?? '';
     return Scaffold(
+      backgroundColor: AppColors.homeBackground,
       appBar: AppBar(
+        backgroundColor: AppColors.homeBackground,
         title: const Text(
           'Оформление заказа',
           style: TextStyle(fontWeight: FontWeight.w700),
@@ -612,10 +614,16 @@ class _ItemsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: AppColors.surface,
         borderRadius: AppRadii.cardBorder,
-        border: Border.all(color: AppColors.border),
+        boxShadow: [
+          BoxShadow(
+            color: Color(0x0D000000),
+            blurRadius: 8,
+            offset: Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         children: [
@@ -703,10 +711,16 @@ class _DeliveryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: AppColors.surface,
         borderRadius: AppRadii.cardBorder,
-        border: Border.all(color: AppColors.border),
+        boxShadow: [
+          BoxShadow(
+            color: Color(0x0D000000),
+            blurRadius: 8,
+            offset: Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         children: [
@@ -1117,10 +1131,16 @@ class _SummaryCard extends StatelessWidget {
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: AppColors.surface,
         borderRadius: AppRadii.cardBorder,
-        border: Border.all(color: AppColors.border),
+        boxShadow: [
+          BoxShadow(
+            color: Color(0x0D000000),
+            blurRadius: 8,
+            offset: Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         children: [
@@ -1133,7 +1153,7 @@ class _SummaryCard extends StatelessWidget {
             _SummaryRow(
               label: 'Промокод',
               value: '−${_fmt(estimate.promoDiscount)} ₸',
-              valueColor: const Color(0xFF23804A),
+              valueColor: AppColors.success,
             ),
           ],
           if (estimate.bonusApplied > 0) ...[
@@ -1141,7 +1161,7 @@ class _SummaryCard extends StatelessWidget {
             _SummaryRow(
               label: 'Бонусы',
               value: '−${_fmt(estimate.bonusApplied)} ₸',
-              valueColor: const Color(0xFF23804A),
+              valueColor: AppColors.success,
             ),
           ],
           if (hasDiscount) ...[
@@ -1223,7 +1243,7 @@ class _DeliveryRow extends StatelessWidget {
           const Text(
             'Бесплатно',
             style: TextStyle(
-              color: Color(0xFF23804A),
+              color: AppColors.success,
               fontSize: 14,
               fontWeight: FontWeight.w600,
             ),
@@ -1502,10 +1522,16 @@ class _YoCoinCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: AppRadii.cardBorder,
-        border: Border.all(
-          color: useBonus && hasBalance ? AppColors.purple : AppColors.border,
-          width: useBonus && hasBalance ? 1.5 : 1.0,
-        ),
+        border: (useBonus && hasBalance)
+            ? Border.all(color: AppColors.purple, width: 1.5)
+            : null,
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0D000000),
+            blurRadius: 8,
+            offset: Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1533,7 +1559,7 @@ class _YoCoinCard extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: hasBalance
                         ? AppColors.purpleSoft
-                        : const Color(0xFFF2F2F5),
+                        : AppColors.border,
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(

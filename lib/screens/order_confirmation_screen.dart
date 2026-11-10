@@ -24,6 +24,7 @@ class OrderConfirmationScreen extends StatelessWidget {
     final theme = Theme.of(context);
 
     return Scaffold(
+      backgroundColor: AppColors.homeBackground,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
@@ -33,7 +34,7 @@ class OrderConfirmationScreen extends StatelessWidget {
               const Spacer(),
               const Icon(
                 Icons.check_circle_rounded,
-                color: Color(0xFF23804A),
+                color: AppColors.success,
                 size: 80,
               ),
               const SizedBox(height: 24),
@@ -60,7 +61,13 @@ class OrderConfirmationScreen extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: AppColors.surface,
                   borderRadius: AppRadii.cardBorder,
-                  border: Border.all(color: AppColors.border),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x0D000000),
+                      blurRadius: 8,
+                      offset: Offset(0, 2),
+                    ),
+                  ],
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,

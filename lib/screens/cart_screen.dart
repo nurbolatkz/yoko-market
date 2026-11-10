@@ -5,10 +5,11 @@ import '../models/cart_item.dart';
 import '../models/product.dart';
 import '../providers/auth_provider.dart';
 import '../providers/market_provider.dart';
+import '../providers/wishlist_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/product_image.dart';
+import '../widgets/ui/app_product_card.dart';
 import '../widgets/ui/empty_state.dart';
-import '../widgets/ui/product_card.dart';
 import 'auth/phone_screen.dart';
 import 'checkout_screen.dart';
 import 'product_detail_screen.dart';
@@ -24,7 +25,9 @@ class CartScreen extends StatelessWidget {
     final items = provider.cartItems;
 
     return Scaffold(
+      backgroundColor: AppColors.homeBackground,
       appBar: AppBar(
+        backgroundColor: AppColors.homeBackground,
         title: const Text('Корзина', style: TextStyle(fontWeight: FontWeight.bold)),
         actions: [
           if (items.isNotEmpty)
@@ -102,6 +105,8 @@ class _PopularGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final market = context.watch<MarketProvider>();
+    final wishlist = context.watch<WishlistProvider>();
+    final auth = context.read<AuthProvider>();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -121,27 +126,40 @@ class _PopularGrid extends StatelessWidget {
           physics: const NeverScrollableScrollPhysics(),
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 2,
-            mainAxisExtent: 248,
-            crossAxisSpacing: 10,
-            mainAxisSpacing: 10,
+            childAspectRatio: 0.60,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
           ),
           itemCount: products.length,
           itemBuilder: (context, i) {
             final p = products[i];
-            return ProductCard(
-              name: p.title,
-              price: p.price.round(),
-              regularPrice: p.originalPrice?.round(),
-              imageUrl: p.imageUrl,
-              size: p.packageInfo.isEmpty ? null : p.packageInfo,
+            final cartQty = market.cartQuantityFor(p.id);
+            final canAdd = p.inStock && cartQty < p.stockQuantity;
+            return AppProductCard(
+              product: p,
+              cartQty: cartQty,
+              isFavorite: wishlist.isFavorite(p.id),
+              imageKeyPrefix: 'cart-popular',
               onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (_) => ProductDetailScreen(product: p),
                 ),
               ),
-              onAddToCart: p.inStock ? () => market.addToCart(p) : null,
-              isInCart: market.cartQuantityFor(p.id) > 0,
+              onFavorite: () async {
+                final token = await auth.getAccessToken();
+                if (!context.mounted) return;
+                context.read<WishlistProvider>().toggle(p, accessToken: token);
+              },
+              onAdd: canAdd ? () => market.addToCart(p) : null,
+              onDecrement: () {
+                if (cartQty > 1) {
+                  market.updateQuantity(p.id, cartQty - 1);
+                } else {
+                  market.removeFromCart(p.id);
+                }
+              },
+              onIncrement: canAdd ? () => market.addToCart(p) : null,
             );
           },
         ),
@@ -196,9 +214,15 @@ class _CartItemCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0D000000),
+            blurRadius: 8,
+            offset: Offset(0, 2),
+          ),
+        ],
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
