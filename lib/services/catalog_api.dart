@@ -47,6 +47,7 @@ abstract interface class CatalogDataSource {
     String? search,
     int limit = 50,
     int offset = 0,
+    String sort = 'popular',
   });
 
   Future<List<BannerItem>> getBanners();
@@ -89,13 +90,14 @@ class CatalogApi implements CatalogDataSource {
     String? search,
     int limit = 50,
     int offset = 0,
+    String sort = 'popular',
   }) async {
     final response = await _dio.get<dynamic>(
       '/products',
       queryParameters: {
         if (category != null && category.isNotEmpty) 'category': category,
         if (search != null && search.trim().isNotEmpty) 'search': search.trim(),
-        'sort': 'popular',
+        'sort': sort,
         'limit': limit,
         'offset': offset,
       },

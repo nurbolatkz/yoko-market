@@ -44,7 +44,6 @@ class _CatalogScreenState extends State<CatalogScreen> {
   Widget build(BuildContext context) {
     final provider = context.watch<MarketProvider>();
     final cartCount = provider.cartItemCount;
-    final cartTotal = provider.cartTotalAmount;
 
     final isInitialLoad =
         provider.catalogLoading && provider.categories.isEmpty;
@@ -53,7 +52,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
         provider.categories.isEmpty;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.homeBackground,
       body: SafeArea(
         bottom: false,
         child: Stack(
@@ -106,8 +105,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
                           const SizedBox(height: 28),
                           _SectionHeader(
                             title: 'Лучшие предложения',
-                            onSeeAll: () =>
-                                widget.onCategorySelected('All'),
+                            onSeeAll: () => widget.onCategorySelected('All'),
                           ),
                           const SizedBox(height: 14),
                           _HorizontalProductRow(
@@ -115,10 +113,43 @@ class _CatalogScreenState extends State<CatalogScreen> {
                             provider: provider,
                           ),
                         ],
+                        if (provider.bestSellersLoading) ...[
+                          const SizedBox(height: 28),
+                          const _SkeletonBox(height: 18, width: 140, radius: 6),
+                          const SizedBox(height: 14),
+                          const _SkeletonHorizontalRow(),
+                        ] else if (provider.bestSellerProducts.isNotEmpty) ...[
+                          const SizedBox(height: 28),
+                          _SectionHeader(
+                            title: 'Хиты продаж',
+                            onSeeAll: () => widget.onCategorySelected('All'),
+                          ),
+                          const SizedBox(height: 14),
+                          _HorizontalProductRow(
+                            products: provider.bestSellerProducts,
+                            provider: provider,
+                          ),
+                        ],
+                        if (provider.newArrivalsLoading) ...[
+                          const SizedBox(height: 28),
+                          const _SkeletonBox(height: 18, width: 110, radius: 6),
+                          const SizedBox(height: 14),
+                          const _SkeletonHorizontalRow(),
+                        ] else if (provider.newArrivalProducts.isNotEmpty) ...[
+                          const SizedBox(height: 28),
+                          _SectionHeader(
+                            title: 'Новинки',
+                            onSeeAll: () => widget.onCategorySelected('All'),
+                          ),
+                          const SizedBox(height: 14),
+                          _HorizontalProductRow(
+                            products: provider.newArrivalProducts,
+                            provider: provider,
+                          ),
+                        ],
                         if (provider.lastSeenProducts.isNotEmpty) ...[
                           const SizedBox(height: 28),
-                          const _SectionHeader(
-                              title: 'Недавно просмотренные'),
+                          const _SectionHeader(title: 'Недавно просмотренные'),
                           const SizedBox(height: 14),
                           _HorizontalProductRow(
                             products: provider.lastSeenProducts,
@@ -135,21 +166,8 @@ class _CatalogScreenState extends State<CatalogScreen> {
                     ),
                   ),
                   _ProductGrid(provider: provider),
-                  SliverToBoxAdapter(
-                    child: SizedBox(height: cartCount > 0 ? 120 : 96),
-                  ),
+                  SliverToBoxAdapter(child: const SizedBox(height: 96)),
                 ],
-              ),
-            if (!isInitialLoad && !hasError && cartCount > 0)
-              Positioned(
-                bottom: 0,
-                left: 0,
-                right: 0,
-                child: _CartPanel(
-                  itemCount: cartCount,
-                  total: cartTotal,
-                  onTap: widget.onCartTapped,
-                ),
               ),
           ],
         ),
@@ -245,39 +263,29 @@ class _HomeSkeleton extends StatelessWidget {
               const SizedBox(height: 18),
               const _SkeletonBox(height: 160, radius: 16),
               const SizedBox(height: 24),
-              // 4-column category skeletons (2 rows)
-              ...List.generate(2, (row) => Padding(
-                padding: EdgeInsets.only(bottom: row < 1 ? 12 : 0),
+              // Horizontal circle skeletons for category strip
+              SizedBox(
+                height: 86,
                 child: Row(
-                  children: List.generate(
-                    4,
-                    (i) => Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 3),
-                        child: Column(
-                          children: [
-                            const AspectRatio(
-                              aspectRatio: 1,
-                              child: _SkeletonBox(
-                                height: double.infinity,
-                                radius: 14,
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            Container(
-                              height: 10,
-                              decoration: BoxDecoration(
-                                color: AppColors.lavenderMid,
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                            ),
-                          ],
+                  children: List.generate(5, (i) => Padding(
+                    padding: const EdgeInsets.only(right: 10),
+                    child: Column(
+                      children: [
+                        const _SkeletonBox(height: 56, width: 56, radius: 28),
+                        const SizedBox(height: 6),
+                        Container(
+                          height: 10,
+                          width: 46,
+                          decoration: BoxDecoration(
+                            color: AppColors.lavenderMid,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
                         ),
-                      ),
+                      ],
                     ),
-                  ),
+                  )),
                 ),
-              )),
+              ),
               const SizedBox(height: 28),
               const _SkeletonBox(height: 18, width: 160, radius: 6),
               const SizedBox(height: 14),
@@ -359,49 +367,37 @@ class _Header extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Image.asset(
-          'assets/images/logo.png',
-          height: 28,
-          fit: BoxFit.fitHeight,
-        ),
+        Image.asset('assets/images/logo.png', height: 36, fit: BoxFit.fitHeight),
         const Spacer(),
         GestureDetector(
           onTap: () {},
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: AppColors.surface,
               borderRadius: BorderRadius.circular(20),
               border: Border.all(color: AppColors.border),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(
-                  Icons.location_on_rounded,
-                  size: 13,
-                  color: AppColors.purple,
-                ),
-                const SizedBox(width: 3),
+                const Icon(Icons.location_on_rounded, size: 14, color: AppColors.purple),
+                const SizedBox(width: 4),
                 ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 60),
+                  constraints: const BoxConstraints(maxWidth: 72),
                   child: const Text(
                     'Алматы',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       color: AppColors.navy,
-                      fontSize: 12,
+                      fontSize: 13,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
                 const SizedBox(width: 2),
-                const Icon(
-                  Icons.keyboard_arrow_down_rounded,
-                  size: 14,
-                  color: AppColors.navyMuted,
-                ),
+                const Icon(Icons.keyboard_arrow_down_rounded, size: 14, color: AppColors.navyMuted),
               ],
             ),
           ),
@@ -550,10 +546,19 @@ class _BannerCard extends StatelessWidget {
     );
   }
 
+  String _ctaLabel(BannerItem b) {
+    if (b.actionLabel != null && b.actionLabel!.isNotEmpty) return b.actionLabel!;
+    return switch (b.actionType) {
+      'product' => 'Смотреть товар',
+      'category' => 'Перейти в каталог',
+      _ => 'Подробнее',
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
     // Image-only banner: image carries its own design — no duplicate text overlay.
-    // A "Подробнее" chip sits in the bottom-left corner so users know it's tappable.
+    // A CTA chip sits in the bottom-left corner so users know it's tappable.
     if (banner.imageUrl != null) {
       return GestureDetector(
         onTap: () => _onTap(context),
@@ -564,6 +569,8 @@ class _BannerCard extends StatelessWidget {
             child: Stack(
               fit: StackFit.expand,
               children: [
+                // Near-white bg so letterboxing is clean
+                Container(color: AppColors.homeBackground),
                 LayoutBuilder(
                   builder: (context, constraints) {
                     final physicalW =
@@ -572,12 +579,13 @@ class _BannerCard extends StatelessWidget {
                             .ceil();
                     return _RetryImage(
                       url: banner.imageUrl!,
-                      fit: BoxFit.cover,
+                      fit: BoxFit.contain,
                       alignment: Alignment.center,
                       cacheWidth: physicalW.clamp(800, 2048),
                     );
                   },
                 ),
+                // CTA chip bottom-left
                 Positioned(
                   left: 12,
                   bottom: 12,
@@ -589,19 +597,19 @@ class _BannerCard extends StatelessWidget {
                         color: Colors.white.withAlpha(230),
                         borderRadius: BorderRadius.circular(20),
                       ),
-                      child: const Row(
+                      child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
-                            'Подробнее',
-                            style: TextStyle(
+                            _ctaLabel(banner),
+                            style: const TextStyle(
                               color: AppColors.navy,
                               fontSize: 12,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
-                          SizedBox(width: 4),
-                          Icon(Icons.arrow_forward_ios_rounded, size: 10, color: AppColors.navy),
+                          const SizedBox(width: 4),
+                          const Icon(Icons.arrow_forward_ios_rounded, size: 10, color: AppColors.navy),
                         ],
                       ),
                     ),
@@ -853,28 +861,6 @@ double _sin(double r) {
 
 // ── Categories ─────────────────────────────────────────────────────────────────
 
-class _CategoryPlaceholder extends StatelessWidget {
-  const _CategoryPlaceholder({required this.name});
-
-  final String name;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: AppColors.lavenderDeep,
-      alignment: Alignment.center,
-      child: Text(
-        name.isNotEmpty ? name[0].toUpperCase() : '?',
-        style: const TextStyle(
-          color: AppColors.purple,
-          fontSize: 22,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
-    );
-  }
-}
-
 class _Categories extends StatelessWidget {
   const _Categories({
     required this.categories,
@@ -886,81 +872,100 @@ class _Categories extends StatelessWidget {
   final ValueChanged<String> onSelected;
   final VoidCallback onSeeAll;
 
-  Widget _buildItem(ProductCategory cat) {
-    return Expanded(
-      child: InkWell(
-        key: Key('home-category-${cat.name}'),
-        borderRadius: BorderRadius.circular(14),
-        onTap: () => onSelected(cat.name),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 3),
-          child: Column(
-            children: [
-              AspectRatio(
-                aspectRatio: 1,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(14),
-                  child: cat.imageUrl != null
-                      ? _RetryImage(url: cat.imageUrl!, fit: BoxFit.cover)
-                      : _CategoryPlaceholder(name: cat.name),
-                ),
-              ),
-              const SizedBox(height: 6),
-              SizedBox(
-                height: 30,
-                child: Text(
-                  cat.name,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: AppColors.navy,
-                    fontSize: 10,
-                    height: 1.2,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     if (categories.isEmpty) return const SizedBox.shrink();
-
-    // Show at most 8 (4 × 2) on the home screen.
-    final visible = categories.length > 8
-        ? categories.sublist(0, 8)
-        : categories;
-
-    final rows = <Widget>[];
-    for (var start = 0; start < visible.length; start += 4) {
-      final end = (start + 4).clamp(0, visible.length);
-      final rowItems = visible.sublist(start, end);
-      final rowWidgets = [
-        ...rowItems.map(_buildItem),
-        ...List.generate(
-          4 - rowItems.length,
-          (_) => const Expanded(child: SizedBox()),
-        ),
-      ];
-      if (rows.isNotEmpty) rows.add(const SizedBox(height: 12));
-      rows.add(Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: rowWidgets,
-      ));
-    }
-
+    // Show at most 8 from set_home.
+    final visible = categories.length > 8 ? categories.sublist(0, 8) : categories;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _SectionHeader(title: 'Категории', onSeeAll: onSeeAll),
-        const SizedBox(height: 12),
-        ...rows,
+        const SizedBox(height: 10),
+        SizedBox(
+          height: 86,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            padding: EdgeInsets.zero,
+            itemCount: visible.length + 1,
+            separatorBuilder: (_, _) => const SizedBox(width: 10),
+            itemBuilder: (context, index) {
+              if (index == visible.length) {
+                return GestureDetector(
+                  onTap: onSeeAll,
+                  child: SizedBox(
+                    width: 64,
+                    child: Column(
+                      children: [
+                        Container(
+                          width: 56,
+                          height: 56,
+                          decoration: BoxDecoration(
+                            color: AppColors.surface,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: AppColors.border),
+                          ),
+                          child: const Icon(Icons.grid_view_rounded, color: AppColors.purple, size: 24),
+                        ),
+                        const SizedBox(height: 6),
+                        const Text(
+                          'Все',
+                          maxLines: 1,
+                          style: TextStyle(
+                            color: AppColors.purple,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }
+              final cat = visible[index];
+              return InkWell(
+                key: Key('home-category-${cat.name}'),
+                borderRadius: BorderRadius.circular(14),
+                onTap: () => onSelected(cat.name),
+                child: SizedBox(
+                  width: 64,
+                  child: Column(
+                    children: [
+                      SizedBox(
+                        width: 56,
+                        height: 56,
+                        child: ClipOval(
+                          child: cat.imageUrl != null
+                              ? _RetryImage(url: cat.imageUrl!, fit: BoxFit.cover)
+                              : Container(
+                                  color: AppColors.lavenderMid,
+                                  child: const Icon(Icons.category_outlined, color: AppColors.purple, size: 24),
+                                ),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      SizedBox(
+                        height: 24,
+                        child: Text(
+                          cat.name,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: AppColors.navy,
+                            fontSize: 10,
+                            height: 1.2,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
       ],
     );
   }
@@ -1019,7 +1024,7 @@ class _ProductGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final products = provider.filteredProducts.take(4).toList();
+    final products = provider.filteredProducts.take(50).toList();
 
     return SliverPadding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -1082,8 +1087,7 @@ class _ProductGrid extends StatelessWidget {
                           child: SizedBox(
                             width: double.infinity,
                             child: ProductImage(
-                              key: Key(
-                                  'home-product-image-${product.id}'),
+                              key: Key('home-product-image-${product.id}'),
                               imageUrl: product.imageUrl,
                             ),
                           ),
@@ -1582,96 +1586,6 @@ class _AddButtonState extends State<_AddButton> {
             color:
                 widget.canAdd ? Colors.white : AppColors.navyMuted,
           ),
-        ),
-      ),
-    );
-  }
-}
-
-// ── Cart panel ─────────────────────────────────────────────────────────────────
-
-class _CartPanel extends StatelessWidget {
-  const _CartPanel({
-    required this.itemCount,
-    required this.total,
-    required this.onTap,
-  });
-
-  final int itemCount;
-  final double total;
-  final VoidCallback onTap;
-
-  String _itemWord(int n) {
-    if (n % 10 == 1 && n % 100 != 11) return 'товар';
-    if (n % 10 >= 2 &&
-        n % 10 <= 4 &&
-        (n % 100 < 10 || n % 100 >= 20)) { return 'товара'; }
-    return 'товаров';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        padding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-        decoration: BoxDecoration(
-          color: AppColors.purple,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.purple.withAlpha(80),
-              blurRadius: 16,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            const Icon(
-              Icons.shopping_cart_rounded,
-              color: Colors.white,
-              size: 20,
-            ),
-            const SizedBox(width: 8),
-            const Text(
-              'Корзина',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Container(
-                width: 1, height: 14, color: Colors.white38),
-            const SizedBox(width: 8),
-            Text(
-              '$itemCount ${_itemWord(itemCount)}',
-              style: TextStyle(
-                color: Colors.white.withAlpha(200),
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const Spacer(),
-            Text(
-              '${total.toStringAsFixed(0)} ₸',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 15,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            const SizedBox(width: 6),
-            const Icon(
-              Icons.arrow_forward_ios_rounded,
-              color: Colors.white,
-              size: 13,
-            ),
-          ],
         ),
       ),
     );
