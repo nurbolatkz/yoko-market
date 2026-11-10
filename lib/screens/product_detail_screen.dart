@@ -398,7 +398,7 @@ class _PriceRow extends StatelessWidget {
             child: Text(
               '-$discountPct%',
               style: const TextStyle(
-                color: Color(0xFF1B7F5E),
+                color: AppColors.success,
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
               ),
@@ -1203,7 +1203,7 @@ class _ReviewCard extends StatelessWidget {
                   child: const Text(
                     'Верифицирован',
                     style: TextStyle(
-                      color: Color(0xFF1B7F5E),
+                      color: AppColors.success,
                       fontSize: 10,
                       fontWeight: FontWeight.w600,
                     ),
@@ -1363,12 +1363,12 @@ class _SuccessState extends StatelessWidget {
       child: const Row(
         children: [
           Icon(Icons.check_circle_rounded,
-              color: Color(0xFF1B7F5E), size: 20),
+              color: AppColors.success, size: 20),
           SizedBox(width: 10),
           Text(
             'Спасибо за отзыв!',
             style: TextStyle(
-              color: Color(0xFF1B7F5E),
+              color: AppColors.success,
               fontSize: 14,
               fontWeight: FontWeight.w700,
             ),
