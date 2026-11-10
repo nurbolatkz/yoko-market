@@ -8,7 +8,7 @@ import '../providers/auth_provider.dart';
 import '../providers/market_provider.dart';
 import '../providers/wishlist_provider.dart';
 import '../theme/app_theme.dart';
-import '../widgets/product_image.dart';
+import '../widgets/ui/app_product_card.dart';
 import '../widgets/ui/empty_state.dart';
 import '../widgets/ui/error_state.dart';
 import 'product_detail_screen.dart';
@@ -37,7 +37,9 @@ class _ProductCatalogScreenState extends State<ProductCatalogScreen> {
     final pos = _scrollController.position;
     if (pos.pixels >= pos.maxScrollExtent - 300) {
       final provider = context.read<MarketProvider>();
-      if (!provider.catalogLoading && !provider.isLoadingMore && provider.hasMore) {
+      if (!provider.catalogLoading &&
+          !provider.isLoadingMore &&
+          provider.hasMore) {
         provider.loadMoreProducts();
       }
     }
@@ -75,11 +77,13 @@ class _ProductCatalogScreenState extends State<ProductCatalogScreen> {
     final products = provider.filteredProducts;
 
     return Scaffold(
+      backgroundColor: AppColors.homeBackground,
       body: SafeArea(
         bottom: false,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // ── Title ────────────────────────────────────────────────
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
               child: Text(
@@ -87,8 +91,9 @@ class _ProductCatalogScreenState extends State<ProductCatalogScreen> {
                 style: Theme.of(context).textTheme.headlineMedium,
               ),
             ),
+            // ── Search ───────────────────────────────────────────────
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
               child: TextField(
                 key: const Key('catalog-search'),
                 controller: _searchController,
@@ -110,7 +115,8 @@ class _ProductCatalogScreenState extends State<ProductCatalogScreen> {
                       ? IconButton(
                           tooltip: 'Фильтры',
                           icon: const Icon(Icons.tune_rounded),
-                          onPressed: () => _showFilterSheet(context, provider),
+                          onPressed: () =>
+                              _showFilterSheet(context, provider),
                         )
                       : IconButton(
                           tooltip: 'Очистить поиск',
@@ -125,21 +131,20 @@ class _ProductCatalogScreenState extends State<ProductCatalogScreen> {
                 ),
               ),
             ),
+            // ── Category chips ───────────────────────────────────────
             SizedBox(
-              height: 62,
+              height: 54,
               child: ListView.separated(
                 key: const Key('catalog-categories'),
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
+                    horizontal: 16, vertical: 10),
                 itemCount: provider.categories.length,
                 separatorBuilder: (_, _) => const SizedBox(width: 8),
                 itemBuilder: (context, index) {
                   final category = provider.categories[index];
-                  final selected = provider.selectedCategory == category;
-
+                  final selected =
+                      provider.selectedCategory == category;
                   return ChoiceChip(
                     label: Text(category == 'All' ? 'Все' : category),
                     selected: selected,
@@ -151,126 +156,170 @@ class _ProductCatalogScreenState extends State<ProductCatalogScreen> {
                     selectedColor: AppColors.purple,
                     backgroundColor: AppColors.surface,
                     side: BorderSide(
-                      color: selected ? AppColors.purple : AppColors.border,
+                      color: selected
+                          ? AppColors.purple
+                          : AppColors.border,
                     ),
                     labelStyle: TextStyle(
                       color: selected ? Colors.white : AppColors.navy,
                       fontWeight: FontWeight.w600,
+                      fontSize: 13,
                     ),
                     showCheckmark: false,
+                    visualDensity: VisualDensity.compact,
                   );
                 },
               ),
             ),
-            // Count label: only show when we have all results (hasMore = false)
-            // to avoid showing a partial loaded count as the total.
-            if (!provider.hasMore && products.isNotEmpty && !provider.catalogLoading)
+            // ── Product count ────────────────────────────────────────
+            if (!provider.hasMore &&
+                products.isNotEmpty &&
+                !provider.catalogLoading)
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 2, 16, 10),
                 child: Text(
                   '${products.length} ${_productWord(products.length)}',
                   key: const Key('catalog-product-count'),
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppColors.navyMuted,
-                    fontWeight: FontWeight.w500,
-                  ),
+                        color: AppColors.navyMuted,
+                        fontWeight: FontWeight.w500,
+                      ),
                 ),
               )
             else
               const SizedBox(height: 10),
+            // ── Content area ─────────────────────────────────────────
             Expanded(
-              child: provider.catalogLoading && products.isEmpty
-                  ? const Center(child: CircularProgressIndicator())
-                  : provider.catalogError != null
-                  ? Center(
-                      child: ErrorState(
-                        message: provider.catalogError,
-                        onRetry: provider.loadCatalog,
-                      ),
-                    )
-                  : products.isEmpty
-                  ? _EmptyCatalog(
-                      onReset: () {
-                        _searchController.clear();
-                        _scrollToTop();
-                        provider.resetCatalogFilters();
-                      },
-                    )
-                  : Stack(
-                      children: [
-                        RefreshIndicator(
-                          onRefresh: () =>
-                              context.read<MarketProvider>().loadCatalog(),
-                          child: CustomScrollView(
-                            key: const Key('catalog-grid'),
-                            controller: _scrollController,
-                            physics: const AlwaysScrollableScrollPhysics(),
-                            slivers: [
-                              SliverPadding(
-                                padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
-                                sliver: SliverGrid(
-                                  gridDelegate:
-                                      const SliverGridDelegateWithFixedCrossAxisCount(
-                                        crossAxisCount: 2,
-                                        mainAxisExtent: 272,
-                                        crossAxisSpacing: 10,
-                                        mainAxisSpacing: 10,
-                                      ),
-                                  delegate: SliverChildBuilderDelegate(
-                                    (context, index) {
-                                      final p = products[index];
-                                      final cartQty = provider.cartQuantityFor(p.id);
-                                      final canAdd = p.inStock && cartQty < p.stockQuantity;
-                                      final wishlist = context.read<WishlistProvider>();
-                                      final auth = context.read<AuthProvider>();
-                                      return CatalogProductCard(
-                                        product: p,
-                                        isFavorite: context.watch<WishlistProvider>().isFavorite(p.id),
-                                        onFavorite: () async {
-                                          final token = await auth.getAccessToken();
-                                          wishlist.toggle(p, accessToken: token);
-                                        },
-                                        onAdd: canAdd ? () => provider.addToCart(p) : null,
-                                        onOpen: () => Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (_) => ProductDetailScreen(product: p),
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                    childCount: products.length,
-                                  ),
-                                ),
-                              ),
-                              if (provider.isLoadingMore)
-                                const SliverToBoxAdapter(
-                                  child: Padding(
-                                    padding: EdgeInsets.symmetric(vertical: 16),
-                                    child: Center(
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              const SliverToBoxAdapter(
-                                child: SizedBox(height: 80),
-                              ),
-                            ],
-                          ),
-                        ),
-                        if (provider.catalogLoading)
-                          const Align(
-                            alignment: Alignment.topCenter,
-                            child: LinearProgressIndicator(),
-                          ),
-                      ],
-                    ),
+              child: _buildContent(context, provider, products),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildContent(
+    BuildContext context,
+    MarketProvider provider,
+    List<Product> products,
+  ) {
+    if (provider.catalogLoading && products.isEmpty) {
+      return _CatalogLoadingSkeleton(
+        crossAxisCount: 2,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
+        childAspectRatio: 0.60,
+      );
+    }
+    if (provider.catalogError != null && products.isEmpty) {
+      return Center(
+        child: ErrorState(
+          message: provider.catalogError,
+          onRetry: provider.loadCatalog,
+        ),
+      );
+    }
+    if (products.isEmpty) {
+      return _EmptyCatalog(
+        onReset: () {
+          _searchController.clear();
+          _scrollToTop();
+          provider.resetCatalogFilters();
+        },
+      );
+    }
+
+    return Stack(
+      children: [
+        RefreshIndicator(
+          onRefresh: () => context.read<MarketProvider>().loadCatalog(),
+          child: CustomScrollView(
+            key: const Key('catalog-grid'),
+            controller: _scrollController,
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
+              SliverPadding(
+                padding:
+                    const EdgeInsets.fromLTRB(16, 0, 16, 0),
+                sliver: SliverGrid(
+                  gridDelegate:
+                      const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    childAspectRatio: 0.60,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                  ),
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) {
+                      final p = products[index];
+                      final cartQty =
+                          provider.cartQuantityFor(p.id);
+                      final canAdd = p.inStock &&
+                          cartQty < p.stockQuantity;
+                      final wishlist =
+                          context.watch<WishlistProvider>();
+                      return AppProductCard(
+                        product: p,
+                        cartQty: cartQty,
+                        isFavorite: wishlist.isFavorite(p.id),
+                        imageKeyPrefix: 'catalog',
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                ProductDetailScreen(product: p),
+                          ),
+                        ),
+                        onFavorite: () async {
+                          final token = await context
+                              .read<AuthProvider>()
+                              .getAccessToken();
+                          if (!context.mounted) return;
+                          context
+                              .read<WishlistProvider>()
+                              .toggle(p, accessToken: token);
+                        },
+                        onAdd: canAdd
+                            ? () => provider.addToCart(p)
+                            : null,
+                        onDecrement: () {
+                          if (cartQty > 1) {
+                            provider.updateQuantity(
+                                p.id, cartQty - 1);
+                          } else {
+                            provider.removeFromCart(p.id);
+                          }
+                        },
+                        onIncrement: canAdd
+                            ? () => provider.addToCart(p)
+                            : null,
+                      );
+                    },
+                    childCount: products.length,
+                  ),
+                ),
+              ),
+              if (provider.isLoadingMore)
+                const SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(vertical: 16),
+                    child: Center(
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  ),
+                ),
+              const SliverToBoxAdapter(
+                child: SizedBox(height: 80),
+              ),
+            ],
+          ),
+        ),
+        if (provider.catalogLoading && products.isNotEmpty)
+          const Align(
+            alignment: Alignment.topCenter,
+            child: LinearProgressIndicator(),
+          ),
+      ],
     );
   }
 
@@ -302,7 +351,8 @@ class _ProductCatalogScreenState extends State<ProductCatalogScreen> {
               style: Theme.of(ctx).textTheme.titleMedium,
             ),
             const SizedBox(height: 12),
-            const Text('Сортировка по популярности применяется по умолчанию.'),
+            const Text(
+                'Сортировка по популярности применяется по умолчанию.'),
             const SizedBox(height: 16),
             FilledButton(
               onPressed: () => Navigator.pop(ctx),
@@ -325,168 +375,44 @@ class _ProductCatalogScreenState extends State<ProductCatalogScreen> {
   }
 }
 
-class CatalogProductCard extends StatelessWidget {
-  const CatalogProductCard({
-    super.key,
-    required this.product,
-    required this.isFavorite,
-    required this.onFavorite,
-    required this.onAdd,
-    required this.onOpen,
+// ── Loading skeleton ────────────────────────────────────────────────────────────
+
+class _CatalogLoadingSkeleton extends StatelessWidget {
+  const _CatalogLoadingSkeleton({
+    required this.crossAxisCount,
+    required this.crossAxisSpacing,
+    required this.mainAxisSpacing,
+    required this.childAspectRatio,
   });
 
-  final Product product;
-  final bool isFavorite;
-  final VoidCallback onFavorite;
-  final VoidCallback? onAdd;
-  final VoidCallback onOpen;
+  final int crossAxisCount;
+  final double crossAxisSpacing;
+  final double mainAxisSpacing;
+  final double childAspectRatio;
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: AppRadii.cardBorder,
-        side: BorderSide(color: AppColors.border),
+    return GridView.builder(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 80),
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: crossAxisCount,
+        childAspectRatio: childAspectRatio,
+        crossAxisSpacing: crossAxisSpacing,
+        mainAxisSpacing: mainAxisSpacing,
       ),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onOpen,
-        child: Padding(
-          padding: const EdgeInsets.all(10),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // ── Product image (slightly shorter) ────────────────────
-              SizedBox(
-                height: 120,
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: ProductImage(
-                        key: Key('catalog-product-image-${product.id}'),
-                        imageUrl: product.imageUrl,
-                      ),
-                    ),
-                    Positioned(
-                      top: 4,
-                      right: 4,
-                      child: Material(
-                        color: Colors.white.withValues(alpha: .92),
-                        shape: const CircleBorder(),
-                        child: IconButton(
-                          visualDensity: VisualDensity.compact,
-                          tooltip: isFavorite
-                              ? 'Убрать из избранного'
-                              : 'В избранное',
-                          onPressed: onFavorite,
-                          icon: Icon(
-                            isFavorite
-                                ? Icons.favorite_rounded
-                                : Icons.favorite_border_rounded,
-                            color: isFavorite
-                                ? AppColors.purple
-                                : AppColors.navy,
-                            size: 20,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 8),
-              // ── Name (up to 2 lines) ─────────────────────────────────
-              Text(
-                product.title,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: AppColors.navy,
-                  fontSize: 13,
-                  height: 1.25,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              // ── Package / size info ──────────────────────────────────
-              if (product.packageInfo.isNotEmpty) ...[
-                const SizedBox(height: 2),
-                Text(
-                  product.packageInfo,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppColors.navyMuted,
-                    fontSize: 11,
-                    height: 1.2,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-              const SizedBox(height: 4),
-              // ── Stock status (no quantity number) ────────────────────
-              Text(
-                !product.inStock
-                    ? 'Нет в наличии'
-                    : onAdd == null
-                        ? 'Максимум в корзине'
-                        : 'В наличии',
-                maxLines: 1,
-                style: TextStyle(
-                  color: !product.inStock
-                      ? Colors.red.shade700
-                      : onAdd == null
-                          ? AppColors.navyMuted
-                          : const Color(0xFF23804A),
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const Spacer(),
-              // ── Price + add button ───────────────────────────────────
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      '${product.price.toStringAsFixed(0)} ₸',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: AppColors.navy,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ),
-                  IconButton.filled(
-                    key: Key('add-${product.id}'),
-                    tooltip: product.inStock ? 'Добавить в корзину' : 'Нет в наличии',
-                    onPressed: onAdd,
-                    style: IconButton.styleFrom(
-                      backgroundColor: AppColors.purple,
-                      foregroundColor: Colors.white,
-                      disabledBackgroundColor: AppColors.border,
-                      disabledForegroundColor: AppColors.navyMuted,
-                      minimumSize: const Size(34, 34),
-                      maximumSize: const Size(34, 34),
-                      padding: EdgeInsets.zero,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(9),
-                      ),
-                    ),
-                    icon: const Icon(Icons.add_rounded, size: 20),
-                  ),
-                ],
-              ),
-            ],
-          ),
+      itemCount: 6,
+      itemBuilder: (_, _) => Container(
+        decoration: BoxDecoration(
+          color: AppColors.lavenderMid,
+          borderRadius: AppRadii.cardBorder,
         ),
       ),
     );
   }
 }
+
+// ── Empty state ─────────────────────────────────────────────────────────────────
 
 class _EmptyCatalog extends StatelessWidget {
   const _EmptyCatalog({required this.onReset});
@@ -539,29 +465,43 @@ class _SearchSuggestions extends StatelessWidget {
           physics: const NeverScrollableScrollPhysics(),
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 2,
-            mainAxisExtent: 272,
-            crossAxisSpacing: 10,
-            mainAxisSpacing: 10,
+            childAspectRatio: 0.60,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
           ),
           itemCount: products.length,
           itemBuilder: (context, i) {
             final p = products[i];
-            final canAdd = p.inStock &&
-                market.cartQuantityFor(p.id) < p.stockQuantity;
-            return CatalogProductCard(
+            final cartQty = market.cartQuantityFor(p.id);
+            final canAdd =
+                p.inStock && cartQty < p.stockQuantity;
+            return AppProductCard(
               product: p,
+              cartQty: cartQty,
               isFavorite: wishlist.isFavorite(p.id),
-              onFavorite: () async {
-                final token = await auth.getAccessToken();
-                wishlist.toggle(p, accessToken: token);
-              },
-              onAdd: canAdd ? () => market.addToCart(p) : null,
-              onOpen: () => Navigator.push(
+              imageKeyPrefix: 'catalog-suggest',
+              onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (_) => ProductDetailScreen(product: p),
                 ),
               ),
+              onFavorite: () async {
+                final token = await auth.getAccessToken();
+                if (!context.mounted) return;
+                context
+                    .read<WishlistProvider>()
+                    .toggle(p, accessToken: token);
+              },
+              onAdd: canAdd ? () => market.addToCart(p) : null,
+              onDecrement: () {
+                if (cartQty > 1) {
+                  market.updateQuantity(p.id, cartQty - 1);
+                } else {
+                  market.removeFromCart(p.id);
+                }
+              },
+              onIncrement: canAdd ? () => market.addToCart(p) : null,
             );
           },
         ),

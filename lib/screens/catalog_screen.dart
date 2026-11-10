@@ -11,6 +11,7 @@ import '../providers/market_provider.dart';
 import '../providers/wishlist_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/product_image.dart';
+import '../widgets/ui/app_product_card.dart';
 import '../widgets/ui/error_state.dart';
 import 'product_detail_screen.dart';
 import 'promotion_detail_screen.dart';
@@ -1039,19 +1040,15 @@ class _ProductGrid extends StatelessWidget {
         itemBuilder: (context, index) {
           final product = products[index];
           final cartQty = provider.cartQuantityFor(product.id);
-          final canAdd =
-              product.inStock && cartQty < product.stockQuantity;
-          final hasDiscount = product.originalPrice != null &&
-              product.originalPrice! > product.price;
-          final discPct = hasDiscount
-              ? ((1 - product.price / product.originalPrice!) * 100)
-                  .round()
-              : 0;
+          final canAdd = product.inStock && cartQty < product.stockQuantity;
           final wishlist = context.watch<WishlistProvider>();
           final isFav = wishlist.isFavorite(product.id);
 
-          return InkWell(
-            borderRadius: AppRadii.cardBorder,
+          return AppProductCard(
+            product: product,
+            cartQty: cartQty,
+            isFavorite: isFav,
+            imageKeyPrefix: 'home',
             onTap: () {
               context.read<MarketProvider>().recordView(product);
               Navigator.push(
@@ -1061,184 +1058,20 @@ class _ProductGrid extends StatelessWidget {
                 ),
               );
             },
-            child: Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: AppRadii.cardBorder,
-                boxShadow: const [
-                  BoxShadow(
-                    color: Color(0x0D000000),
-                    blurRadius: 8,
-                    offset: Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Photo with optional discount + wishlist badges
-                  Expanded(
-                    flex: 5,
-                    child: Stack(
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: SizedBox(
-                            width: double.infinity,
-                            child: ProductImage(
-                              key: Key('home-product-image-${product.id}'),
-                              imageUrl: product.imageUrl,
-                            ),
-                          ),
-                        ),
-                        if (hasDiscount)
-                          Positioned(
-                            top: 6,
-                            left: 6,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 6,
-                                vertical: 2,
-                              ),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFFF4444),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                '-$discPct%',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                            ),
-                          ),
-                        Positioned(
-                          top: 4,
-                          right: 4,
-                          child: GestureDetector(
-                            onTap: () async {
-                              final token = await context
-                                  .read<AuthProvider>()
-                                  .getAccessToken();
-                              wishlist.toggle(product,
-                                  accessToken: token);
-                            },
-                            child: Container(
-                              width: 28,
-                              height: 28,
-                              decoration: BoxDecoration(
-                                color: Colors.white.withAlpha(220),
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(
-                                isFav
-                                    ? Icons.favorite_rounded
-                                    : Icons.favorite_border_rounded,
-                                size: 16,
-                                color: isFav
-                                    ? Colors.redAccent
-                                    : AppColors.navyMuted,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  // Price row
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.baseline,
-                    textBaseline: TextBaseline.alphabetic,
-                    children: [
-                      Text(
-                        '${product.price.toStringAsFixed(0)} ₸',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: AppColors.purple,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                      if (hasDiscount) ...[
-                        const SizedBox(width: 4),
-                        Flexible(
-                          child: Text(
-                            '${product.originalPrice!.toStringAsFixed(0)} ₸',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: AppColors.navyMuted,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w500,
-                              decoration: TextDecoration.lineThrough,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                  const SizedBox(height: 3),
-                  // Name
-                  Text(
-                    product.title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: AppColors.navy,
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w600,
-                      height: 1.25,
-                    ),
-                  ),
-                  // Packaging
-                  if (product.packageInfo.isNotEmpty) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      product.packageInfo,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: AppColors.navyMuted,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                  const Spacer(),
-                  // Add / stepper
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: cartQty > 0
-                        ? _Stepper(
-                            qty: cartQty,
-                            canIncrement: canAdd,
-                            onDecrement: () {
-                              if (cartQty > 1) {
-                                provider.updateQuantity(
-                                    product.id, cartQty - 1);
-                              } else {
-                                provider.removeFromCart(product.id);
-                              }
-                            },
-                            onIncrement: canAdd
-                                ? () => provider.addToCart(product)
-                                : null,
-                          )
-                        : _AddButton(
-                            canAdd: canAdd,
-                            onTap: canAdd
-                                ? () => provider.addToCart(product)
-                                : null,
-                          ),
-                  ),
-                ],
-              ),
-            ),
+            onFavorite: () async {
+              final token =
+                  await context.read<AuthProvider>().getAccessToken();
+              wishlist.toggle(product, accessToken: token);
+            },
+            onAdd: canAdd ? () => provider.addToCart(product) : null,
+            onDecrement: () {
+              if (cartQty > 1) {
+                provider.updateQuantity(product.id, cartQty - 1);
+              } else {
+                provider.removeFromCart(product.id);
+              }
+            },
+            onIncrement: canAdd ? () => provider.addToCart(product) : null,
           );
         },
       ),
@@ -1545,49 +1378,3 @@ class _StepBtn extends StatelessWidget {
   }
 }
 
-// ── Add button ─────────────────────────────────────────────────────────────────
-
-class _AddButton extends StatefulWidget {
-  const _AddButton({required this.canAdd, this.onTap});
-
-  final bool canAdd;
-  final VoidCallback? onTap;
-
-  @override
-  State<_AddButton> createState() => _AddButtonState();
-}
-
-class _AddButtonState extends State<_AddButton> {
-  bool _pressed = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: (_) => setState(() => _pressed = true),
-      onTapUp: (_) {
-        setState(() => _pressed = false);
-        widget.onTap?.call();
-      },
-      onTapCancel: () => setState(() => _pressed = false),
-      child: AnimatedScale(
-        scale: (_pressed && widget.canAdd) ? 0.86 : 1.0,
-        duration: const Duration(milliseconds: 90),
-        curve: Curves.easeInOut,
-        child: Container(
-          width: 32,
-          height: 32,
-          decoration: BoxDecoration(
-            color: widget.canAdd ? AppColors.purple : AppColors.border,
-            borderRadius: BorderRadius.circular(9),
-          ),
-          child: Icon(
-            Icons.add,
-            size: 17,
-            color:
-                widget.canAdd ? Colors.white : AppColors.navyMuted,
-          ),
-        ),
-      ),
-    );
-  }
-}
