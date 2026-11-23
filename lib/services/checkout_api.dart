@@ -1,18 +1,12 @@
 import 'package:dio/dio.dart';
 
-import '../config/app_config.dart';
 import '../models/cart_item.dart';
 import '../models/checkout_estimate.dart';
+import 'api_client.dart';
 
 class CheckoutApi {
   CheckoutApi({Dio? dio})
-      : _dio = dio ??
-            Dio(BaseOptions(
-              baseUrl: AppConfig.apiBaseUrl,
-              connectTimeout: const Duration(seconds: 15),
-              receiveTimeout: const Duration(seconds: 15),
-              responseType: ResponseType.json,
-            ));
+      : _dio = dio ?? ApiClient.create(timeout: const Duration(seconds: 15));
 
   final Dio _dio;
 
@@ -21,6 +15,13 @@ class CheckoutApi {
   Future<bool> getOrdersEnabled() async {
     final resp = await _dio.get<dynamic>('/settings/delivery');
     return (resp.data as Map<String, dynamic>)['orders_enabled'] as bool? ?? false;
+  }
+
+  /// GET /settings/delivery — public; full payload for the delivery info
+  /// screen (cities, payment methods, free-delivery threshold, …).
+  Future<Map<String, dynamic>> getDeliverySettings() async {
+    final resp = await _dio.get<dynamic>('/settings/delivery');
+    return resp.data as Map<String, dynamic>;
   }
 
   /// GET /checkout/cities — public; returns serviced cities for city picker.

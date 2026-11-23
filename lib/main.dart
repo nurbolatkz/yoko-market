@@ -199,9 +199,11 @@ class _StartScreenState extends State<_StartScreen> {
 
   Future<void> _checkPinGate() async {
     final flagEnabled = widget.testFastLoginEnabled ?? AppConfig.fastLoginEnabled;
-    // Skip in test environment: FlutterSecureStorage has no platform channel
-    // in widget tests and would hang indefinitely.
-    if (!flagEnabled || _isRunningUnderTest()) {
+    // Skip in test environment unless a service was injected: the default
+    // FlutterSecureStorage has no platform channel in widget tests and would
+    // hang indefinitely, but an injected in-memory service is safe to query.
+    final injected = widget.fastLoginService != null;
+    if (!flagEnabled || (!injected && _isRunningUnderTest())) {
       if (mounted) setState(() => _pinNeeded = false);
       return;
     }

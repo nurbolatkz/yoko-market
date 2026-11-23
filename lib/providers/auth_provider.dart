@@ -1,13 +1,18 @@
 import 'package:flutter/foundation.dart';
 
 import '../models/user_profile.dart';
+import '../services/api_client.dart';
 import '../services/auth_service.dart';
 
 enum AuthState { unknown, guest, authenticated, sessionError, sessionExpired }
 
 class AuthProvider with ChangeNotifier {
   AuthProvider({AuthService? authService})
-    : _auth = authService ?? AuthService();
+    : _auth = authService ?? AuthService() {
+    // Every Dio built by ApiClient refreshes through here on a 401, so a
+    // failed refresh also moves the app into sessionExpired/sessionError.
+    ApiClient.configure(refresher: ensureFreshToken, reader: getAccessToken);
+  }
 
   final AuthService _auth;
 
