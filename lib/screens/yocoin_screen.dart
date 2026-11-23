@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../providers/auth_provider.dart';
 import '../theme/app_theme.dart';
-import '../services/loyalty_api.dart';
+import '../services/yocoin_legacy_api.dart';
 
 // ── Entry point ────────────────────────────────────────────────────────────────
 
@@ -16,7 +16,7 @@ class YoCoinScreen extends StatefulWidget {
 }
 
 class _YoCoinScreenState extends State<YoCoinScreen> {
-  final _api = LoyaltyApi();
+  final _api = YoCoinLegacyApi();
 
   _LoyaltyRules? _rules;
   bool _loading = true;
