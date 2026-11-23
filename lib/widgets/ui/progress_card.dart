@@ -19,6 +19,13 @@ class ProgressCard extends StatelessWidget {
   final String? endLabel;
   final String? progressLabel;
 
+  static const _labelStyle = TextStyle(
+    fontFamily: 'NunitoSans',
+    fontSize: 12,
+    fontWeight: FontWeight.w400,
+    color: AppColors.navyMuted,
+  );
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -59,42 +66,38 @@ class ProgressCard extends StatelessWidget {
         ),
         const SizedBox(height: 6),
         Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (startLabel != null)
-              Text(
-                startLabel!,
-                style: const TextStyle(
-                  fontFamily: 'NunitoSans',
-                  fontSize: 12,
-                  fontWeight: FontWeight.w400,
-                  color: AppColors.navyMuted,
-                ),
-              )
-            else
-              const SizedBox.shrink(),
-            if (progressLabel != null)
-              Text(
-                progressLabel!,
-                style: const TextStyle(
-                  fontFamily: 'NunitoSans',
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.purple,
+            Expanded(
+              child: startLabel != null
+                  ? Text(startLabel!, style: _labelStyle)
+                  : const SizedBox.shrink(),
+            ),
+            if (progressLabel != null) ...[
+              const SizedBox(width: AppSpacing.sm),
+              Flexible(
+                child: Text(
+                  progressLabel!,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontFamily: 'NunitoSans',
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.purple,
+                  ),
                 ),
               ),
-            if (endLabel != null)
-              Text(
-                endLabel!,
-                style: const TextStyle(
-                  fontFamily: 'NunitoSans',
-                  fontSize: 12,
-                  fontWeight: FontWeight.w400,
-                  color: AppColors.navyMuted,
+            ],
+            if (endLabel != null) ...[
+              const SizedBox(width: AppSpacing.sm),
+              Flexible(
+                child: Text(
+                  endLabel!,
+                  textAlign: TextAlign.end,
+                  style: _labelStyle,
                 ),
-              )
-            else
-              const SizedBox.shrink(),
+              ),
+            ],
           ],
         ),
       ],
