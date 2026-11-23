@@ -2,6 +2,14 @@ abstract final class AppConfig {
   static const uiPreview = bool.fromEnvironment('UI_PREVIEW');
   static const mockAccountRecovery = bool.fromEnvironment('MOCK_RECOVERY', defaultValue: true);
 
+  /// Loyalty rules (monthly cashback model from Figma, AGENTS.md §9).
+  /// Mock until the backend ships the new rules: --dart-define=MOCK_LOYALTY=false
+  static const mockLoyalty = bool.fromEnvironment('MOCK_LOYALTY', defaultValue: true);
+
+  /// Wallet + gift cards (`/wallet`, `/gift-cards/*`, see API_CONTRACT.md).
+  /// Mock until the backend is ready: --dart-define=MOCK_WALLET=false
+  static const mockWallet = bool.fromEnvironment('MOCK_WALLET', defaultValue: true);
+
   /// Enable fast login UI (PIN + biometrics).
   /// Enabled by default. To disable for a hotfix build, pass:
   ///   --dart-define=FAST_LOGIN_ENABLED=false

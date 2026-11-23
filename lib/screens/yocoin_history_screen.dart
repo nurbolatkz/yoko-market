@@ -5,7 +5,7 @@ import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../theme/app_theme.dart';
 import 'auth/phone_screen.dart';
-import '../services/loyalty_api.dart';
+import '../services/yocoin_legacy_api.dart';
 
 class YoCoinHistoryScreen extends StatefulWidget {
   const YoCoinHistoryScreen({super.key});
@@ -17,7 +17,7 @@ class YoCoinHistoryScreen extends StatefulWidget {
 class _YoCoinHistoryScreenState extends State<YoCoinHistoryScreen> {
   static const _pageSize = 20;
 
-  final _api = LoyaltyApi();
+  final _api = YoCoinLegacyApi();
 
   final _scrollController = ScrollController();
 

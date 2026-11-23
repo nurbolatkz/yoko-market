@@ -29,6 +29,7 @@
 | POST | `/profile/referral-code` | Bearer | InviteScreen, Profile | ready (нужен формат кода из 4 символов) |
 | GET | `/profile/referral-stats` | Bearer | InviteScreen | ready |
 | POST | `/profile/activate-referral` | Bearer | InviteCodeScreen, Cart | ready |
+| GET | `/loyalty/rules` | нет | YoCoin, Wallet, Profile, Home | partial (старая форма уровней; нужна месячная модель) |
 | GET | `/wallet` | Bearer | WalletScreen, Profile, Checkout | awaiting-backend |
 | GET | `/wallet/history` | Bearer | WalletScreen | awaiting-backend |
 | POST | `/gift-cards/activate` | Bearer | WalletScreen (шит активации) | awaiting-backend |
@@ -322,7 +323,7 @@
   "items": [{"product_id": "123", "name": "…", "qty": 1, "price": 6400}],
   "address": "Алматы, Бухтарминская 24/3",
   "bonus_used": 0,
-  "promo_code": "DAUL",
+  "promo_code": "DAUR",
   "delivery_type": "standard",
   "pickup_point_id": null,
   "use_gift_balance": true
@@ -342,7 +343,7 @@
   "subtotal": 6400,
   "promo_discount": 0,
   "promo_type": "referral",
-  "promo_message": "Код DAUL применён: +1 000 YoCoin после первого заказа",
+  "promo_message": "Код DAUR применён: +1 000 YoCoin после первого заказа",
   "promo_error": null,
   "bonus_applied": 0,
   "gift_balance_available": 20000,
@@ -473,10 +474,45 @@
 
 #### Ответ `POST /profile/referral-code` (без изменений по полям)
 ```json
-{"referral_code": "DAUL", "invite_link": "https://…/invite/DAUL", "bonus_referrer": 300, "bonus_user": 1000}
+{"referral_code": "DAUR", "invite_link": "https://…/invite/DAUR", "bonus_referrer": 300, "bonus_user": 1000}
 ```
 
 > Суммы `bonus_referrer` / `bonus_user` — источник правды для текста «+1 000 YoCoin вам и другу». Клиент не хардкодит цифры.
+
+---
+
+### GET /loyalty/rules — месячная модель кэшбэка
+
+**Статус:** partial — эндпоинт есть, но отдаёт старую форму (`tiers[].min/max/discount_pct`, `redemption.max_pct_of_order`). `HttpLoyaltyApi` понимает обе формы.  
+**Авторизация:** нет  
+**Используется в:** новые экраны «Мой кошелёк», карточка кэшбэка в профиле, плитка «Бонусы за покупку» на главной  
+**Mock-флаг:** `MOCK_LOYALTY=true` (по умолчанию `true`) — цифры из Figma (AGENTS.md §9)
+
+> Текущие экраны YoCoin (`YoCoinScreen`, `YoCoinHistoryScreen`) пока работают с реальным эндпоинтом через `YoCoinLegacyApi`, чтобы не показывать пользователям тестовые данные.
+
+#### Успешный ответ (200) — новая форма
+```json
+{
+  "tiers": [
+    {"min_monthly_spend": 50000,  "percent": 3,  "label": "от 50 000 ₸"},
+    {"min_monthly_spend": 100000, "percent": 5,  "label": "от 100 000 ₸"},
+    {"min_monthly_spend": 200000, "percent": 10, "label": "от 200 000 ₸"}
+  ],
+  "max_pay_with_bonus_pct": 100,
+  "registration_bonus": 1000,
+  "referral_bonus": 300,
+  "free_delivery_threshold": 10000
+}
+```
+
+| Поле | Смысл |
+|---|---|
+| `tiers` | Уровни кэшбэка по сумме покупок **за календарный месяц**; YoCoin начисляются после окончания месяца |
+| `max_pay_with_bonus_pct` | Сколько % заказа можно оплатить YoCoin (1 YoCoin = 1 ₸) |
+| `registration_bonus` / `referral_bonus` | YoCoin за регистрацию / за приглашённого друга |
+| `free_delivery_threshold` | Бесплатная доставка от этой суммы в зоне доставки |
+
+> Текущий месяц (сколько потрачено, сколько до следующего уровня, предварительный кэшбэк) — в `GET /wallet → cashback`.
 
 ---
 
