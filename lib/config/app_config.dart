@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart' show kDebugMode;
+
 abstract final class AppConfig {
   static const uiPreview = bool.fromEnvironment('UI_PREVIEW');
   static const mockAccountRecovery = bool.fromEnvironment('MOCK_RECOVERY', defaultValue: true);
@@ -9,6 +11,11 @@ abstract final class AppConfig {
   /// Wallet + gift cards (`/wallet`, `/gift-cards/*`, see API_CONTRACT.md).
   /// Mock until the backend is ready: --dart-define=MOCK_WALLET=false
   static const mockWallet = bool.fromEnvironment('MOCK_WALLET', defaultValue: true);
+
+  /// «Мой кошелёк» entry point. Hidden in release builds while the wallet is
+  /// mocked, so real users never see demo balances; visible in debug /
+  /// UI-preview builds and as soon as `MOCK_WALLET=false`.
+  static bool get walletVisible => !mockWallet || kDebugMode || uiPreview;
 
   /// Enable fast login UI (PIN + biometrics).
   /// Enabled by default. To disable for a hotfix build, pass:

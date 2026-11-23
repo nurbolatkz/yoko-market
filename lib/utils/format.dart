@@ -1,17 +1,32 @@
 import 'package:flutter/widgets.dart';
 import '../theme/app_theme.dart';
 
-/// Formats monetary amount as "5 990 ₸" (non-breaking space as thousands separator).
-String formatMoney(int amount) {
-  final s = amount.abs().toString();
+/// Formats monetary amount as "5 990 ₸".
+String formatMoney(int amount) => '${formatNumber(amount)} ₸';
+
+/// Groups thousands: 1250 → "1 250", -6400 → "-6 400".
+String formatNumber(int value) {
+  final s = value.abs().toString();
   final buf = StringBuffer();
   final len = s.length;
   for (var i = 0; i < len; i++) {
     if (i > 0 && (len - i) % 3 == 0) buf.write(' ');
     buf.write(s[i]);
   }
-  if (amount < 0) return '-${buf.toString()} ₸';
-  return '${buf.toString()} ₸';
+  return value < 0 ? '-$buf' : buf.toString();
+}
+
+/// 2027-11-23 → "23.11.2027".
+String formatDate(DateTime d) =>
+    '${d.day.toString().padLeft(2, '0')}.${d.month.toString().padLeft(2, '0')}.${d.year}';
+
+/// Russian plural: pluralRu(7, 'день', 'дня', 'дней') → "дней".
+String pluralRu(int n, String one, String few, String many) {
+  final n10 = n.abs() % 10;
+  final n100 = n.abs() % 100;
+  if (n10 == 1 && n100 != 11) return one;
+  if (n10 >= 2 && n10 <= 4 && (n100 < 12 || n100 > 14)) return few;
+  return many;
 }
 
 /// Inline money text widget.

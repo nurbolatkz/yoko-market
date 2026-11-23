@@ -17,6 +17,8 @@ import 'settings_screen.dart';
 import 'personal_data_screen.dart';
 import 'support_screen.dart';
 import 'yocoin_history_screen.dart';
+import '../config/app_config.dart';
+import 'wallet_screen.dart';
 
 // Profile screen uses a light-lavender tint (#F8F7FC) rather than the app's
 // default warm-white (#FAF9F6) to match the design reference.
@@ -293,6 +295,17 @@ class _AuthenticatedViewState extends State<_AuthenticatedView> {
             MaterialPageRoute(builder: (_) => const YoCoinHistoryScreen()),
           ),
         ),
+        if (AppConfig.walletVisible) ...[
+          const SizedBox(height: 8),
+          _MenuItem(
+            title: 'Мой кошелёк',
+            subtitle: 'Подарочные карты, YoCoin и кэшбэк',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const WalletScreen()),
+            ),
+          ),
+        ],
         const SizedBox(height: 8),
         _MenuItem(
           title: 'Пригласить друга',

@@ -50,14 +50,23 @@ class HeroBalanceCard extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(
-                value,
-                style: const TextStyle(
-                  fontFamily: 'NunitoSans',
-                  fontSize: 40,
-                  fontWeight: FontWeight.w800,
-                  color: Colors.white,
-                  height: 1,
+              // Large balances shrink to fit instead of overflowing
+              // (narrow phones, 1.5× text scale).
+              Flexible(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.bottomLeft,
+                  child: Text(
+                    value,
+                    maxLines: 1,
+                    style: const TextStyle(
+                      fontFamily: 'NunitoSans',
+                      fontSize: 40,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                      height: 1,
+                    ),
+                  ),
                 ),
               ),
               if (unit != null) ...[
