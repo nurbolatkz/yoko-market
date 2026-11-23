@@ -2,10 +2,10 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../config/app_config.dart';
 import '../providers/auth_provider.dart';
 import '../theme/app_theme.dart';
 import 'auth/phone_screen.dart';
+import '../services/loyalty_api.dart';
 
 class YoCoinHistoryScreen extends StatefulWidget {
   const YoCoinHistoryScreen({super.key});
@@ -17,13 +17,7 @@ class YoCoinHistoryScreen extends StatefulWidget {
 class _YoCoinHistoryScreenState extends State<YoCoinHistoryScreen> {
   static const _pageSize = 20;
 
-  final _dio = Dio(
-    BaseOptions(
-      baseUrl: AppConfig.apiBaseUrl,
-      connectTimeout: const Duration(seconds: 8),
-      receiveTimeout: const Duration(seconds: 8),
-    ),
-  );
+  final _api = LoyaltyApi();
 
   final _scrollController = ScrollController();
 
@@ -74,12 +68,11 @@ class _YoCoinHistoryScreenState extends State<YoCoinHistoryScreen> {
     }
 
     try {
-      final resp = await _dio.get<dynamic>(
-        '/mobile/bonus-history',
-        queryParameters: {'offset': 0, 'limit': _pageSize},
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      final data = await _api.getBonusHistoryJson(
+        token: token,
+        offset: 0,
+        limit: _pageSize,
       );
-      final data = resp.data as Map<String, dynamic>;
       if (!mounted) return;
       setState(() {
         _balance = (data['balance'] as num).toInt();
@@ -119,12 +112,11 @@ class _YoCoinHistoryScreenState extends State<YoCoinHistoryScreen> {
     }
 
     try {
-      final resp = await _dio.get<dynamic>(
-        '/mobile/bonus-history',
-        queryParameters: {'offset': _items.length, 'limit': _pageSize},
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      final data = await _api.getBonusHistoryJson(
+        token: token,
+        offset: _items.length,
+        limit: _pageSize,
       );
-      final data = resp.data as Map<String, dynamic>;
       if (!mounted) return;
       setState(() {
         _balance = (data['balance'] as num).toInt();

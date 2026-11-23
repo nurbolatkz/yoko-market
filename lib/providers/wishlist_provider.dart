@@ -4,8 +4,8 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../config/app_config.dart';
 import '../models/product.dart';
+import '../services/wishlist_api.dart';
 
 class WishlistProvider with ChangeNotifier {
   WishlistProvider() {
@@ -13,6 +13,8 @@ class WishlistProvider with ChangeNotifier {
   }
 
   static const _localKey = 'wishlist_v1';
+
+  final _api = WishlistApi();
 
   // product_id → Product snapshot
   final Map<String, Product> _items = {};
@@ -72,14 +74,8 @@ class WishlistProvider with ChangeNotifier {
     _error = null;
     notifyListeners();
     try {
-      final dio = _makeDio(accessToken);
       // Merge local items into the backend and get the full merged list back.
-      final resp = await dio.post<dynamic>(
-        '/wishlist/sync',
-        data: {'product_ids': _items.keys.toList()},
-      );
-      final data = resp.data as Map<String, dynamic>;
-      final remoteIds = (data['product_ids'] as List).cast<String>().toSet();
+      final remoteIds = await _api.sync(accessToken, _items.keys.toList());
 
       // Keep local product snapshots for already-known IDs, mark others as
       // needing a fetch — for now we store a placeholder so the ID is tracked.
@@ -131,24 +127,15 @@ class WishlistProvider with ChangeNotifier {
 
   Future<void> _backendAdd(String productId, String token) async {
     try {
-      await _makeDio(token).post<dynamic>('/wishlist/$productId');
+      await _api.add(token, productId);
     } catch (_) {}
   }
 
   Future<void> _backendRemove(String productId, String token) async {
     try {
-      await _makeDio(token).delete<dynamic>('/wishlist/$productId');
+      await _api.remove(token, productId);
     } catch (_) {}
   }
-
-  Dio _makeDio(String token) => Dio(
-        BaseOptions(
-          baseUrl: AppConfig.apiBaseUrl,
-          connectTimeout: const Duration(seconds: 8),
-          receiveTimeout: const Duration(seconds: 8),
-          headers: {'Authorization': 'Bearer $token'},
-        ),
-      );
 
   Product _placeholder(String id) => Product(
         id: id,

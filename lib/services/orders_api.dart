@@ -1,17 +1,11 @@
 import 'package:dio/dio.dart';
 
-import '../config/app_config.dart';
 import '../models/order.dart';
+import 'api_client.dart';
 
 class OrdersApi {
   OrdersApi({Dio? dio})
-      : _dio = dio ??
-            Dio(BaseOptions(
-              baseUrl: AppConfig.apiBaseUrl,
-              connectTimeout: const Duration(seconds: 15),
-              receiveTimeout: const Duration(seconds: 15),
-              responseType: ResponseType.json,
-            ));
+      : _dio = dio ?? ApiClient.create(timeout: const Duration(seconds: 15));
 
   final Dio _dio;
 

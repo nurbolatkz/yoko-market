@@ -1,9 +1,7 @@
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../config/app_config.dart';
 import '../models/product.dart';
 import '../providers/auth_provider.dart';
 import '../providers/market_provider.dart';
@@ -13,6 +11,7 @@ import '../theme/app_theme.dart';
 import '../utils/dio_error.dart';
 import '../widgets/product_image.dart';
 import '../widgets/ui/error_state.dart';
+import '../services/reviews_api.dart';
 
 // ── Review data ────────────────────────────────────────────────────────────────
 
@@ -863,14 +862,7 @@ class _ReviewsSection extends StatefulWidget {
 }
 
 class _ReviewsSectionState extends State<_ReviewsSection> {
-  final _dio = Dio(
-    BaseOptions(
-      baseUrl: AppConfig.apiBaseUrl,
-      connectTimeout: const Duration(seconds: 8),
-      receiveTimeout: const Duration(seconds: 8),
-      responseType: ResponseType.json,
-    ),
-  );
+  final _api = ReviewsApi();
 
   List<_ReviewItem> _reviews = [];
   bool _loading = true;
@@ -895,8 +887,7 @@ class _ReviewsSectionState extends State<_ReviewsSection> {
 
   Future<void> _load() async {
     try {
-      final resp = await _dio.get('/products/${widget.productId}/reviews');
-      final list = (resp.data as List?)?.whereType<Map<String, dynamic>>().toList() ?? [];
+      final list = await _api.list(widget.productId);
       final prefs = await SharedPreferences.getInstance();
       final hasReviewed = prefs.getBool('reviewed_${widget.productId}') ?? false;
       if (!mounted) return;
@@ -917,20 +908,12 @@ class _ReviewsSectionState extends State<_ReviewsSection> {
     try {
       final auth = context.read<AuthProvider>();
       final token = auth.isAuthenticated ? await auth.getAccessToken() : null;
-      final options = token != null
-          ? Options(headers: {'Authorization': 'Bearer $token'})
-          : null;
-      final resp = await _dio.post(
-        '/products/${widget.productId}/reviews',
-        data: {
-          if (token == null) 'author_name': 'Покупатель',
-          'rating': _selectedRating,
-          if (_textCtrl.text.trim().isNotEmpty) 'text': _textCtrl.text.trim(),
-        },
-        options: options,
+      final alreadyReviewed = await _api.submit(
+        widget.productId,
+        rating: _selectedRating,
+        text: _textCtrl.text.trim(),
+        token: token,
       );
-      final alreadyReviewed = resp.data is Map &&
-          (resp.data as Map)['already_reviewed'] == true;
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('reviewed_${widget.productId}', true);
       if (!mounted) return;

@@ -2,11 +2,10 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../config/app_config.dart';
-import '../models/product.dart';
 import '../providers/market_provider.dart';
 import '../theme/app_theme.dart';
 import 'product_detail_screen.dart';
+import '../services/catalog_api.dart';
 
 class PromotionDetailScreen extends StatefulWidget {
   const PromotionDetailScreen({super.key, required this.bannerId});
@@ -25,14 +24,7 @@ class _PromotionDetailScreenState extends State<PromotionDetailScreen> {
   String _errorMessage = '';
   bool _actionLoading = false;
 
-  final _dio = Dio(
-    BaseOptions(
-      baseUrl: AppConfig.apiBaseUrl,
-      connectTimeout: const Duration(seconds: 10),
-      receiveTimeout: const Duration(seconds: 10),
-      responseType: ResponseType.json,
-    ),
-  );
+  final _catalog = CatalogApi();
 
   @override
   void initState() {
@@ -66,9 +58,7 @@ class _PromotionDetailScreenState extends State<PromotionDetailScreen> {
   Future<void> _onProductAction(String productId) async {
     setState(() => _actionLoading = true);
     try {
-      final resp = await _dio.get<dynamic>('/products/$productId');
-      if (!mounted) return;
-      final product = Product.fromApiJson(resp.data as Map<String, dynamic>);
+      final product = (await _catalog.getProductById(productId)).product;
       if (!mounted) return;
       Navigator.push(
         context,

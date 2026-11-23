@@ -1,9 +1,9 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 
-import '../config/app_config.dart';
 import '../theme/app_theme.dart';
 import 'support_screen.dart';
+import '../services/checkout_api.dart';
 
 class DeliveryInfoScreen extends StatefulWidget {
   const DeliveryInfoScreen({super.key});
@@ -13,13 +13,7 @@ class DeliveryInfoScreen extends StatefulWidget {
 }
 
 class _DeliveryInfoScreenState extends State<DeliveryInfoScreen> {
-  final _dio = Dio(
-    BaseOptions(
-      baseUrl: AppConfig.apiBaseUrl,
-      connectTimeout: const Duration(seconds: 8),
-      receiveTimeout: const Duration(seconds: 8),
-    ),
-  );
+  final _api = CheckoutApi();
 
   _DeliveryInfo? _info;
   bool _loading = true;
@@ -37,9 +31,10 @@ class _DeliveryInfoScreenState extends State<DeliveryInfoScreen> {
       _error = null;
     });
     try {
-      final resp = await _dio.get<dynamic>('/settings/delivery');
+      final data = await _api.getDeliverySettings();
+      if (!mounted) return;
       setState(() {
-        _info = _DeliveryInfo.fromJson(resp.data as Map<String, dynamic>);
+        _info = _DeliveryInfo.fromJson(data);
         _loading = false;
       });
     } on DioException catch (e) {

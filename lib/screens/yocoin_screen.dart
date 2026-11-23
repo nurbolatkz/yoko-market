@@ -2,9 +2,9 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../config/app_config.dart';
 import '../providers/auth_provider.dart';
 import '../theme/app_theme.dart';
+import '../services/loyalty_api.dart';
 
 // ── Entry point ────────────────────────────────────────────────────────────────
 
@@ -16,13 +16,7 @@ class YoCoinScreen extends StatefulWidget {
 }
 
 class _YoCoinScreenState extends State<YoCoinScreen> {
-  final _dio = Dio(
-    BaseOptions(
-      baseUrl: AppConfig.apiBaseUrl,
-      connectTimeout: const Duration(seconds: 8),
-      receiveTimeout: const Duration(seconds: 8),
-    ),
-  );
+  final _api = LoyaltyApi();
 
   _LoyaltyRules? _rules;
   bool _loading = true;
@@ -40,8 +34,8 @@ class _YoCoinScreenState extends State<YoCoinScreen> {
       _error = null;
     });
     try {
-      final resp = await _dio.get<dynamic>('/loyalty/rules');
-      final data = resp.data as Map<String, dynamic>;
+      final data = await _api.getRulesJson();
+      if (!mounted) return;
       setState(() {
         _rules = _LoyaltyRules.fromJson(data);
         _loading = false;

@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
 
-import '../config/app_config.dart';
+import 'api_client.dart';
 
 abstract class AccountRecoveryApi {
   Future<void> submitRequest({
@@ -11,13 +11,7 @@ abstract class AccountRecoveryApi {
 
 class HttpAccountRecoveryApi implements AccountRecoveryApi {
   HttpAccountRecoveryApi({Dio? dio})
-      : _dio = dio ??
-            Dio(BaseOptions(
-              baseUrl: AppConfig.apiBaseUrl,
-              connectTimeout: const Duration(seconds: 10),
-              receiveTimeout: const Duration(seconds: 10),
-              responseType: ResponseType.json,
-            ));
+      : _dio = dio ?? ApiClient.create(timeout: const Duration(seconds: 10));
 
   final Dio _dio;
 

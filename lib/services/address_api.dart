@@ -1,17 +1,11 @@
 import 'package:dio/dio.dart';
 
-import '../config/app_config.dart';
 import '../models/user_address.dart';
+import 'api_client.dart';
 
 class AddressApi {
   AddressApi({Dio? dio})
-      : _dio = dio ??
-            Dio(BaseOptions(
-              baseUrl: AppConfig.apiBaseUrl,
-              connectTimeout: const Duration(seconds: 8),
-              receiveTimeout: const Duration(seconds: 8),
-              responseType: ResponseType.json,
-            ));
+      : _dio = dio ?? ApiClient.create();
 
   final Dio _dio;
 

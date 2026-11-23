@@ -2,9 +2,9 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../config/app_config.dart';
 import '../theme/app_theme.dart';
 import 'auth/account_recovery_screen.dart';
+import '../services/support_api.dart';
 
 class SupportScreen extends StatefulWidget {
   const SupportScreen({super.key});
@@ -14,13 +14,7 @@ class SupportScreen extends StatefulWidget {
 }
 
 class _SupportScreenState extends State<SupportScreen> {
-  final _dio = Dio(
-    BaseOptions(
-      baseUrl: AppConfig.apiBaseUrl,
-      connectTimeout: const Duration(seconds: 8),
-      receiveTimeout: const Duration(seconds: 8),
-    ),
-  );
+  final _api = SupportApi();
 
   List<_FaqNode> _roots = [];
   bool _loading = true;
@@ -38,10 +32,7 @@ class _SupportScreenState extends State<SupportScreen> {
       _error = null;
     });
     try {
-      final resp = await _dio.get<dynamic>('/support/tree');
-      final raw = resp.data;
-      if (raw is! List) throw Exception('unexpected');
-      final nodes = raw.whereType<Map<String, dynamic>>().toList();
+      final nodes = await _api.getTree();
       setState(() {
         _roots = _buildTree(nodes);
         _loading = false;
