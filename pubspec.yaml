@@ -72,6 +72,10 @@ flutter:
     - assets/images/hero_banner.png
     - assets/images/promotion_banner.png
     - assets/images/logo.png
+    # YO market Home (decorative, production)
+    - assets/images/home/
+    # UI_PREVIEW fixtures only — never referenced by production code paths
+    - assets/preview/
     - assets/images/welcome/welcome_hero.webp
 
   # To add assets to your application, add an assets section, like this:

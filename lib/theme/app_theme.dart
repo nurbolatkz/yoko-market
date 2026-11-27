@@ -43,7 +43,9 @@ abstract final class AppColors {
 
   /// Warm page background (top → bottom of the Home gradient).
   static const peachTop = Color(0xFFFBE1CE);
-  static const peachBottom = Color(0xFFFDF5F1);
+  /// = bottom-edge colour of the client's Home background image, so the page
+  /// continues seamlessly below it.
+  static const peachBottom = Color(0xFFFEF7F5);
 
   /// Pale peach fill for category tiles, info and offer cards.
   static const peachSoft = Color(0xFFFCE9DF);

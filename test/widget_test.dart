@@ -61,7 +61,7 @@ void main() {
       find.byKey(const Key('home-product-image-p1')),
     );
 
-    await tester.tap(find.text('Каталог'));
+    await tester.tap(find.byKey(const Key('nav-Каталог')));
     await tester.pumpAndSettle();
 
     final catalogImage = tester.widget<ProductImage>(
@@ -119,7 +119,7 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
 
     await _pumpTestApp(tester);
-    await tester.tap(find.text('Каталог'));
+    await tester.tap(find.byKey(const Key('nav-Каталог')));
     await tester.pump();
 
     expect(find.text('8 товаров'), findsOneWidget);

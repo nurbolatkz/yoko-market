@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../models/product_category.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/app_image.dart';
 
 /// Home categories: up to 4 photo tiles + «Все категории» (client mockup).
 class HomeCategoryRow extends StatelessWidget {
@@ -107,12 +108,9 @@ class _Tile extends StatelessWidget {
             AspectRatio(
               aspectRatio: 1,
               child: Container(
+                // White matches the white backdrop of the catalog photos.
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [AppColors.surface, AppColors.peachSoft],
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                  ),
+                  color: AppColors.surface,
                   borderRadius: AppRadii.imageBorder,
                   boxShadow: [
                     BoxShadow(
@@ -122,7 +120,7 @@ class _Tile extends StatelessWidget {
                     ),
                   ],
                 ),
-                padding: const EdgeInsets.all(AppSpacing.sm),
+                clipBehavior: Clip.antiAlias,
                 alignment: Alignment.center,
                 child: child,
               ),
@@ -155,16 +153,29 @@ class _CategoryImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Catalog photos are 602×602 on white with the product taking 67–87 %
+    // of the frame and ≥6.8 % white margin on every side. A uniform 1.12
+    // zoom trims only white margin, so every product keeps its full shape
+    // and the tiles read at one visual scale.
     return LayoutBuilder(
-      builder: (context, c) => Image.network(
-        url,
-        fit: BoxFit.contain,
-        cacheWidth:
-            (c.maxWidth * MediaQuery.devicePixelRatioOf(context)).ceil().clamp(64, 512),
-        errorBuilder: (_, _, _) => const Icon(
-          Icons.category_outlined,
-          color: AppColors.navyMuted,
-          size: 28,
+      builder: (context, c) => Transform.scale(
+        scale: 1.12,
+        child: Image(
+          image: appImageProviderSized(
+            url,
+            (c.maxWidth * MediaQuery.devicePixelRatioOf(context))
+                .ceil()
+                .clamp(64, 512),
+          ),
+          fit: BoxFit.cover,
+          width: double.infinity,
+          height: double.infinity,
+          excludeFromSemantics: true,
+          errorBuilder: (_, _, _) => const Icon(
+            Icons.category_outlined,
+            color: AppColors.navyMuted,
+            size: 28,
+          ),
         ),
       ),
     );

@@ -29,7 +29,7 @@
 | POST | `/profile/referral-code` | Bearer | InviteScreen, Profile | ready (нужен формат кода из 4 символов) |
 | GET | `/profile/referral-stats` | Bearer | InviteScreen | ready |
 | POST | `/profile/activate-referral` | Bearer | InviteCodeScreen, Cart | ready |
-| GET | `/banners` | нет | Home (hero, «Специальные предложения») | partial (нет `placement`) |
+| GET | `/banners` | нет | Home (hero, «Специальные предложения») | partial (нет `placement`, `image_kind`, `illustration_url` — ожидает бэкенд) |
 | GET | `/loyalty/rules` | нет | YoCoin, Wallet, Profile, Home | partial (старая форма уровней; нужна месячная модель) |
 | GET | `/wallet` | Bearer | WalletScreen, Profile, Checkout | awaiting-backend |
 | GET | `/wallet/history` | Bearer | WalletScreen | awaiting-backend |
@@ -482,23 +482,51 @@
 
 ---
 
-### GET /banners — новое поле `placement`
+### GET /banners — форматы для Home (YO market)
 
-**Статус:** partial (остальные поля без изменений)  
+**Статус:** ожидает бэкенд. Проверено по коду `yoko-backend-django` (только чтение, 2026-11-27): модель `apps/banners/models.Banner` (`managed=False`, таблица `banner`) **не содержит** ни `placement`, ни `image_kind`, ни `illustration_url`; размещение задаётся только `is_active`, `sort_order`, `valid_from/valid_until`, `promo_type`.  
 **Авторизация:** нет  
-**Используется в:** Home — верхняя карусель и блок «Специальные предложения» (дизайн YO market)
+**Используется в:** Home — верхний баннер и блок «Специальные предложения»
 
-| Поле | Значения | Если отсутствует |
-|---|---|---|
-| `placement` | `hero` — верхняя карусель; `special` — карточки «Специальные предложения» (по две в ряд) | `hero` |
+Сейчас продакшн отдаёт 3 готовых баннера 1942×809 с текстом на изображении (`action_type: "none"`). Приложение показывает их целиком (без обрезки, текст не дублирует), блок «Специальные предложения» скрыт.
 
-Для `special` карточка показывает: `discount_badge` (или `badge`) — плашка «До −30%» / «2+1», `title`, `subtitle`, стрелку и `image_url` справа. **`image_url` для `special` — вырезанное фото товара на прозрачном фоне (PNG/WebP, ~600×600)**, а не готовый баннер с текстом: текст рисует приложение.
+Предлагаемые **необязательные** поля (нужна миграция в схеме, которой владеет Alembic, и поддержка в Dashboard → «Баннеры»):
+
+| Поле | Значения | Если отсутствует | Что делает приложение |
+|---|---|---|---|
+| `placement` | `hero` · `special` | `hero` | `special` → карточка «Специальные предложения» (по две в ряд) |
+| `image_kind` | `ready` · `illustration` | `ready` | `ready`: изображение с текстом, показывается целиком, Flutter текст не рисует. `illustration`: изображение **без** текста, Flutter рисует `title`, `subtitle` и CTA слева |
+| `illustration_url` | URL прозрачного PNG/WebP (~600 px) | — | Картинка справа в карточке «Специальные предложения». Это **отдельный** ассет: смысл `image_url` (баннер) не меняется |
+
+CTA рисуется только если действие ведёт в существующее место приложения: `action_type: "category"` + `action_value` = название категории, или `action_type: "product"` + `action_value` = ID товара. Без действия кнопки нет; тап по баннеру открывает его детали (`GET /banners/{id}`).
+
+`discount_badge` / `badge` («До −30%», «2+1») показываются только из данных баннера — приложение их не придумывает.
 
 ```json
-{"id": 12, "title": "Выгода на товары Yokosun", "subtitle": "Подгузники, трусики и не только",
- "discount_badge": "До −30%", "image_url": "https://…/yokosun-pack.png", "placement": "special",
- "promo_type": "promotion", "bg_color": "#FFFFFF"}
+{"id": "…", "title": "Уход за малышом", "subtitle": "Собери выгодный набор",
+ "badge": "2+1", "placement": "special",
+ "illustration_url": "https://dashboard.yoko-sun.kz/media/banners/offer_set_hygiene.webp",
+ "action_type": "category", "action_value": "Салфетки", "promo_type": "promotion"}
 ```
+
+Готовые иллюстрации клиента для загрузки через управление баннерами: `design-referrences/yo-market-2026-11/` (в продакшн автоматически не загружались).
+
+---
+
+### Условия на Home: кэшбэк и бесплатная доставка
+
+**Кэшбэк «до N%»** — максимум `discount_pct` по уровням реального `GET /loyalty/rules` (в бэкенде это `cashback_pct` уровня; сейчас 5/5/7/**10**). Берётся из `HttpLoyaltyApi` независимо от `MOCK_LOYALTY`. Нет ответа → карточка без процента.
+
+**Бесплатная доставка — число не показывается.** В бэкенде три разных источника порога, и ни один публичный не подтверждает, что получит покупатель:
+- `GET /settings/delivery → free_delivery_threshold` = env `B2C_FREE_DELIVERY_THRESHOLD` (сейчас 10 000);
+- checkout (`/checkout/estimate`, `/checkout`) берёт `app_settings.delivery_free_threshold`, а при её отсутствии — порог уровня пользователя;
+- пороги уровней в `/loyalty/rules`: Новичок 15 000, Bronze 10 000, Silver/Gold 0.
+
+**Нужно от бэкенда:** один подтверждённый источник (например, `/settings/delivery` возвращает то же значение, что использует checkout для гостя/нового пользователя). До этого карточка ведёт на «Доставка и оплата» с текстом «Условия доставки».
+
+### Найдено при проверке: остатки в публичном каталоге
+
+`GET /products` (публичный, без филиала) возвращает `stock_qty: 0` у всех 50 популярных товаров (2026-11-27). Приложение поэтому показывает кнопку «В корзину» неактивной на всех карточках Home и каталога. Нужно решение бэкенда: остатки по филиалу/городу пользователя или отдельный признак наличия.
 
 ---
 

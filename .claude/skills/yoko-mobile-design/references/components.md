@@ -27,16 +27,19 @@
 - State: idle border `AppColors.border`; focused border `AppColors.purple (1.5 dp)`.
 - Error: `AppColors.error` border + inline `bodySmall` message.
 
-## Banner carousel
+## Banner carousel (Home hero — YO market)
 
-- Hidden when `banners.isEmpty` — no placeholder, no height reservation.
-- Card height: 160 dp. Border radius: `AppRadii.card`.
-- Image: `LayoutBuilder` → `cacheWidth = (constraints.maxWidth × devicePixelRatio).ceil().clamp(800, 2048)`.
-- Background fallback: `LinearGradient` from `bg_color` API field, or `AppColors.purpleSoft`.
-- "Подробнее" chip: Flutter `Positioned` overlay widget — never drawn into the image asset.
-- Tap routing: `isPromoOrGiveaway == true` → `PromotionDetailScreen(bannerId)`, else no-op.
-- Dot indicators: `AppColors.yellow` active, `AppColors.surface.withValues(alpha: 0.5)` inactive.
-- States: loading → `Skeleton(height: 160, radius: AppRadii.card)`; error → silent omit.
+Widget: `HomeHeroCarousel` (`lib/widgets/home/home_hero_banner.dart`).
+
+- Hidden when there are no published hero banners — no placeholder, no height reservation.
+- Proportions 2.4:1 (`kHeroBannerAspect`, backend banners are 1942×809). Radius `AppRadii.card`.
+- **Two image formats** (`BannerItem.imageKind`):
+  - `ready` (default, all current backend banners): text is baked into the image → `BoxFit.contain`, **no Flutter text on top**, never cropped.
+  - `illustration`: image without text → Flutter draws title/subtitle in the free left area (faces stay on the right), CTA **only** when `action_type` is `category`/`product` with a value. Height grows with text scale.
+- No image → compact text card (~96 dp), never a large empty fill. Image error → same compact fallback.
+- Loading → `HomeHeroSkeleton` with the final proportions.
+- Tap: illustration with action → its category/product; otherwise → `PromotionDetailScreen(bannerId)`.
+- Dots: `AppColors.brandRed` active, `AppColors.peachTop` inactive.
 
 ## Category tile
 
