@@ -18,7 +18,7 @@
 - Background: `AppColors.background`; elevation 0; `centerTitle: false`.
 - Left: logo (yellow circle + "Yo Market" RichText) — never on product cards or banners.
 - City selector: `ConstrainedBox(maxWidth: 50)` + `overflow: ellipsis` for long names.
-- Right actions: icons only (search, notifications). Search field lives on **Catalog tab only**.
+- Home header (YO market redesign): `YoMarketLogo` + pill search field below it. Submitting search opens the Catalog tab.
 - AppBar title style: `NunitoSans, 24 px, w800, AppColors.navy`.
 
 ## Search field
@@ -100,7 +100,7 @@ Minimum height: 52 dp (set in `AppTheme`).
 
 ## Tabs (NavigationBar)
 
-5 tabs in fixed order: **Главная · Каталог · Корзина · Избранное · Профиль**.
+5 tabs in fixed order: **Главная · Каталог · Избранное · Корзина · Профиль** (`YoBottomNav`: floating white bar, brand-gradient pill on the active tab).
 Height: 72 dp. Do not reorder or rename without explicit agreement.
 Selected icon: filled/rounded variant. Unselected: outlined variant.
 

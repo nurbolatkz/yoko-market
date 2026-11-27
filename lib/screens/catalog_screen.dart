@@ -5,16 +5,20 @@ import 'package:provider/provider.dart';
 
 import '../models/banner_item.dart';
 import '../models/product.dart';
-import '../models/product_category.dart';
 import '../providers/auth_provider.dart';
 import '../providers/market_provider.dart';
 import '../providers/wishlist_provider.dart';
 import '../theme/app_theme.dart';
-import '../widgets/product_image.dart';
+import '../widgets/home/home_category_row.dart';
+import '../widgets/home/home_info_tiles.dart';
+import '../widgets/home/special_offer_card.dart';
+import '../widgets/yo_market_logo.dart';
 import '../widgets/ui/app_product_card.dart';
 import '../widgets/ui/error_state.dart';
+import 'delivery_info_screen.dart';
 import 'product_detail_screen.dart';
 import 'promotion_detail_screen.dart';
+import 'yocoin_screen.dart';
 
 class CatalogScreen extends StatefulWidget {
   const CatalogScreen({
@@ -35,6 +39,13 @@ class CatalogScreen extends StatefulWidget {
 class _CatalogScreenState extends State<CatalogScreen> {
   final TextEditingController _searchCtrl = TextEditingController();
 
+  void _openBanner(BannerItem banner) => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => PromotionDetailScreen(bannerId: banner.id),
+        ),
+      );
+
   @override
   void dispose() {
     _searchCtrl.dispose();
@@ -52,9 +63,16 @@ class _CatalogScreenState extends State<CatalogScreen> {
         provider.catalogError != null &&
         provider.categories.isEmpty;
 
+    final heroBanners =
+        provider.banners.where((b) => !b.isSpecialOffer).toList();
+    final specialOffers =
+        provider.banners.where((b) => b.isSpecialOffer).toList();
+
     return Scaffold(
-      backgroundColor: AppColors.homeBackground,
-      body: SafeArea(
+      backgroundColor: AppColors.peachBottom,
+      body: DecoratedBox(
+        decoration: const BoxDecoration(gradient: AppGradients.homeBackground),
+        child: SafeArea(
         bottom: false,
         child: Stack(
           children: [
@@ -85,18 +103,46 @@ class _CatalogScreenState extends State<CatalogScreen> {
                             widget.onSearchSubmitted();
                           },
                         ),
-                        const SizedBox(height: 18),
+                        const SizedBox(height: 16),
                         if (provider.bannersLoading)
-                          const _SkeletonBox(height: 160, radius: 16)
-                        else if (provider.banners.isNotEmpty) ...[
-                          _BannerCarousel(banners: provider.banners),
-                          const SizedBox(height: 24),
+                          const _SkeletonBox(height: 170, radius: AppRadii.card)
+                        else if (heroBanners.isNotEmpty) ...[
+                          _BannerCarousel(banners: heroBanners),
+                          const SizedBox(height: 20),
                         ],
-                        _Categories(
+                        HomeCategoryRow(
                           categories: provider.homeCategoryObjects,
                           onSelected: widget.onCategorySelected,
                           onSeeAll: () => widget.onCategorySelected('All'),
                         ),
+                        const SizedBox(height: 20),
+                        HomeInfoTiles(
+                          maxCashbackPercent: provider.maxCashbackPercent,
+                          freeDeliveryFrom: provider.freeDeliveryFrom,
+                          onBonusTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const YoCoinScreen(),
+                            ),
+                          ),
+                          onDeliveryTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const DeliveryInfoScreen(),
+                            ),
+                          ),
+                        ),
+                        if (specialOffers.isNotEmpty) ...[
+                          const SizedBox(height: 28),
+                          const _SectionHeader(
+                            title: 'Специальные предложения',
+                          ),
+                          const SizedBox(height: 14),
+                          _SpecialOffers(
+                            offers: specialOffers,
+                            onTap: _openBanner,
+                          ),
+                        ],
                         if (provider.featuredLoading) ...[
                           const SizedBox(height: 28),
                           const _SkeletonBox(height: 18, width: 160, radius: 6),
@@ -167,10 +213,11 @@ class _CatalogScreenState extends State<CatalogScreen> {
                     ),
                   ),
                   _ProductGrid(provider: provider),
-                  SliverToBoxAdapter(child: const SizedBox(height: 96)),
+                  SliverToBoxAdapter(child: const SizedBox(height: 24)),
                 ],
               ),
           ],
+        ),
         ),
       ),
     );
@@ -365,45 +412,9 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Image.asset('assets/images/logo.png', height: 36, fit: BoxFit.fitHeight),
-        const Spacer(),
-        GestureDetector(
-          onTap: () {},
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: AppColors.border),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.location_on_rounded, size: 14, color: AppColors.purple),
-                const SizedBox(width: 4),
-                ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 72),
-                  child: const Text(
-                    'Алматы',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: AppColors.navy,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 2),
-                const Icon(Icons.keyboard_arrow_down_rounded, size: 14, color: AppColors.navyMuted),
-              ],
-            ),
-          ),
-        ),
-      ],
+    return const Align(
+      alignment: Alignment.centerLeft,
+      child: YoMarketLogo(height: 34),
     );
   }
 }
@@ -426,28 +437,28 @@ class _SearchBar extends StatelessWidget {
       decoration: InputDecoration(
         hintText: 'Поиск товаров',
         hintStyle:
-            const TextStyle(color: AppColors.navyMuted, fontSize: 14),
+            const TextStyle(color: AppColors.navyMuted, fontSize: 15),
         prefixIcon: const Icon(
           Icons.search_rounded,
           color: AppColors.navyMuted,
           size: 20,
         ),
         contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+            const EdgeInsets.symmetric(horizontal: 20, vertical: 13),
         filled: true,
-        fillColor: Colors.white,
+        fillColor: AppColors.surface,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: AppColors.border),
+          borderRadius: BorderRadius.circular(999),
+          borderSide: BorderSide.none,
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: AppColors.border),
+          borderRadius: BorderRadius.circular(999),
+          borderSide: BorderSide.none,
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(999),
           borderSide:
-              const BorderSide(color: AppColors.purple, width: 1.5),
+              const BorderSide(color: AppColors.brandOrange, width: 1.5),
         ),
       ),
     );
@@ -482,7 +493,7 @@ class _BannerCarouselState extends State<_BannerCarousel> {
         // 2.4:1 aspect ratio — wider landscape for image banners.
         // Falls back to 160 px minimum so text-only banners don't collapse.
         final height =
-            (constraints.maxWidth / 2.4).clamp(140.0, 190.0);
+            (constraints.maxWidth / 2.05).clamp(150.0, 220.0);
         return Column(
           children: [
             SizedBox(
@@ -517,8 +528,8 @@ class _BannerCarouselState extends State<_BannerCarousel> {
                     margin: const EdgeInsets.symmetric(horizontal: 2.5),
                     decoration: BoxDecoration(
                       color: active
-                          ? AppColors.purple
-                          : AppColors.lavenderDeep,
+                          ? AppColors.brandRed
+                          : AppColors.peachTop,
                       borderRadius: BorderRadius.circular(999),
                     ),
                   );
@@ -862,116 +873,6 @@ double _sin(double r) {
 
 // ── Categories ─────────────────────────────────────────────────────────────────
 
-class _Categories extends StatelessWidget {
-  const _Categories({
-    required this.categories,
-    required this.onSelected,
-    required this.onSeeAll,
-  });
-
-  final List<ProductCategory> categories;
-  final ValueChanged<String> onSelected;
-  final VoidCallback onSeeAll;
-
-  @override
-  Widget build(BuildContext context) {
-    if (categories.isEmpty) return const SizedBox.shrink();
-    // Show at most 8 from set_home.
-    final visible = categories.length > 8 ? categories.sublist(0, 8) : categories;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _SectionHeader(title: 'Категории', onSeeAll: onSeeAll),
-        const SizedBox(height: 10),
-        SizedBox(
-          height: 86,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            padding: EdgeInsets.zero,
-            itemCount: visible.length + 1,
-            separatorBuilder: (_, _) => const SizedBox(width: 10),
-            itemBuilder: (context, index) {
-              if (index == visible.length) {
-                return GestureDetector(
-                  onTap: onSeeAll,
-                  child: SizedBox(
-                    width: 64,
-                    child: Column(
-                      children: [
-                        Container(
-                          width: 56,
-                          height: 56,
-                          decoration: BoxDecoration(
-                            color: AppColors.surface,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: AppColors.border),
-                          ),
-                          child: const Icon(Icons.grid_view_rounded, color: AppColors.purple, size: 24),
-                        ),
-                        const SizedBox(height: 6),
-                        const Text(
-                          'Все',
-                          maxLines: 1,
-                          style: TextStyle(
-                            color: AppColors.purple,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              }
-              final cat = visible[index];
-              return InkWell(
-                key: Key('home-category-${cat.name}'),
-                borderRadius: BorderRadius.circular(14),
-                onTap: () => onSelected(cat.name),
-                child: SizedBox(
-                  width: 64,
-                  child: Column(
-                    children: [
-                      SizedBox(
-                        width: 56,
-                        height: 56,
-                        child: ClipOval(
-                          child: cat.imageUrl != null
-                              ? _RetryImage(url: cat.imageUrl!, fit: BoxFit.cover)
-                              : Container(
-                                  color: AppColors.lavenderMid,
-                                  child: const Icon(Icons.category_outlined, color: AppColors.purple, size: 24),
-                                ),
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      SizedBox(
-                        height: 24,
-                        child: Text(
-                          cat.name,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            color: AppColors.navy,
-                            fontSize: 10,
-                            height: 1.2,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
-}
-
 // ── Section header ─────────────────────────────────────────────────────────────
 
 class _SectionHeader extends StatelessWidget {
@@ -990,8 +891,8 @@ class _SectionHeader extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
-              color: AppColors.navy,
-              fontSize: 18,
+              color: AppColors.ink,
+              fontSize: 20,
               fontWeight: FontWeight.w800,
               letterSpacing: -0.2,
             ),
@@ -999,14 +900,34 @@ class _SectionHeader extends StatelessWidget {
         ),
         if (onSeeAll != null) ...[
           const SizedBox(width: 12),
-          GestureDetector(
-            onTap: onSeeAll,
-            child: const Text(
-              'Все  →',
-              style: TextStyle(
-                color: AppColors.purple,
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
+          Semantics(
+            button: true,
+            label: 'Все: $title',
+            excludeSemantics: true,
+            child: GestureDetector(
+              onTap: onSeeAll,
+              behavior: HitTestBehavior.opaque,
+              child: const Padding(
+                padding: EdgeInsets.symmetric(vertical: AppSpacing.sm),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Все',
+                      style: TextStyle(
+                        color: AppColors.brandRed,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    SizedBox(width: 2),
+                    Icon(
+                      Icons.arrow_forward_rounded,
+                      size: 16,
+                      color: AppColors.brandRed,
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -1090,207 +1011,56 @@ class _HorizontalProductRow extends StatelessWidget {
   final List<Product> products;
   final MarketProvider provider;
 
+  static const _cardWidth = 160.0;
+
   @override
   Widget build(BuildContext context) {
+    final wishlist = context.watch<WishlistProvider>();
+    // Same proportions as the 2-column grid card, grown with text scale.
+    final scale = MediaQuery.textScalerOf(context).scale(13) / 13;
+    final height = _cardWidth / 0.60 + (scale - 1) * 60;
     return SizedBox(
-      height: 230,
+      height: height,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
+        clipBehavior: Clip.none,
         padding: EdgeInsets.zero,
         itemCount: products.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 10),
+        separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.md),
         itemBuilder: (context, index) {
           final product = products[index];
           final cartQty = provider.cartQuantityFor(product.id);
-          final canAdd =
-              product.inStock && cartQty < product.stockQuantity;
-          final hasDiscount = product.originalPrice != null &&
-              product.originalPrice! > product.price;
-          final wishlist = context.watch<WishlistProvider>();
-          final isFav = wishlist.isFavorite(product.id);
-
-          return GestureDetector(
-            onTap: () {
-              provider.recordView(product);
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => ProductDetailScreen(product: product),
-                ),
-              );
-            },
-            child: Container(
-              width: 140,
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: AppRadii.cardBorder,
-                boxShadow: const [
-                  BoxShadow(
-                    color: Color(0x0D000000),
-                    blurRadius: 8,
-                    offset: Offset(0, 2),
+          final canAdd = product.inStock && cartQty < product.stockQuantity;
+          return SizedBox(
+            width: _cardWidth,
+            child: AppProductCard(
+              product: product,
+              cartQty: cartQty,
+              isFavorite: wishlist.isFavorite(product.id),
+              imageKeyPrefix: 'home-row',
+              onTap: () {
+                provider.recordView(product);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => ProductDetailScreen(product: product),
                   ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Stack(
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: SizedBox.expand(
-                            child:
-                                ProductImage(imageUrl: product.imageUrl),
-                          ),
-                        ),
-                        if (hasDiscount)
-                          Positioned(
-                            top: 4,
-                            left: 4,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 5,
-                                vertical: 2,
-                              ),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFFF4444),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Text(
-                                '−${((1 - product.price / product.originalPrice!) * 100).round()}%',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                            ),
-                          ),
-                        Positioned(
-                          top: 4,
-                          right: 4,
-                          child: GestureDetector(
-                            onTap: () async {
-                              final token = await context
-                                  .read<AuthProvider>()
-                                  .getAccessToken();
-                              wishlist.toggle(product,
-                                  accessToken: token);
-                            },
-                            child: Container(
-                              width: 24,
-                              height: 24,
-                              decoration: BoxDecoration(
-                                color: Colors.white.withAlpha(220),
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(
-                                isFav
-                                    ? Icons.favorite_rounded
-                                    : Icons.favorite_border_rounded,
-                                size: 14,
-                                color: isFav
-                                    ? Colors.redAccent
-                                    : AppColors.navyMuted,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    product.title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.navy,
-                      height: 1.25,
-                    ),
-                  ),
-                  if (product.packageInfo.isNotEmpty) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      product.packageInfo,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 10,
-                        color: AppColors.navyMuted,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          '${product.price.toInt()} ₸',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.purple,
-                          ),
-                        ),
-                      ),
-                      if (cartQty > 0)
-                        _Stepper(
-                          qty: cartQty,
-                          canIncrement: canAdd,
-                          onDecrement: () {
-                            if (cartQty > 1) {
-                              provider.updateQuantity(
-                                  product.id, cartQty - 1);
-                            } else {
-                              provider.removeFromCart(product.id);
-                            }
-                          },
-                          onIncrement: canAdd
-                              ? () => provider.addToCart(product)
-                              : null,
-                        )
-                      else if (canAdd)
-                        GestureDetector(
-                          onTap: () => provider.addToCart(product),
-                          child: Container(
-                            width: 26,
-                            height: 26,
-                            decoration: BoxDecoration(
-                              color: AppColors.purple,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: const Icon(
-                              Icons.add,
-                              color: Colors.white,
-                              size: 16,
-                            ),
-                          ),
-                        )
-                      else
-                        Container(
-                          width: 26,
-                          height: 26,
-                          decoration: BoxDecoration(
-                            color: AppColors.border,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Icon(
-                            Icons.remove,
-                            color: AppColors.navyMuted,
-                            size: 14,
-                          ),
-                        ),
-                    ],
-                  ),
-                ],
-              ),
+                );
+              },
+              onFavorite: () async {
+                final token =
+                    await context.read<AuthProvider>().getAccessToken();
+                wishlist.toggle(product, accessToken: token);
+              },
+              onAdd: canAdd ? () => provider.addToCart(product) : null,
+              onDecrement: () {
+                if (cartQty > 1) {
+                  provider.updateQuantity(product.id, cartQty - 1);
+                } else {
+                  provider.removeFromCart(product.id);
+                }
+              },
+              onIncrement: canAdd ? () => provider.addToCart(product) : null,
             ),
           );
         },
@@ -1299,82 +1069,42 @@ class _HorizontalProductRow extends StatelessWidget {
   }
 }
 
-// ── Stepper ────────────────────────────────────────────────────────────────────
+// ── Special offers (banners with placement: special) ──────────────────────────
 
-class _Stepper extends StatelessWidget {
-  const _Stepper({
-    required this.qty,
-    required this.canIncrement,
-    required this.onDecrement,
-    this.onIncrement,
-  });
+class _SpecialOffers extends StatelessWidget {
+  const _SpecialOffers({required this.offers, required this.onTap});
 
-  final int qty;
-  final bool canIncrement;
-  final VoidCallback onDecrement;
-  final VoidCallback? onIncrement;
+  final List<BannerItem> offers;
+  final ValueChanged<BannerItem> onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 32,
-      decoration: BoxDecoration(
-        color: AppColors.purpleSoft,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _StepBtn(
-            icon: Icons.remove,
-            onTap: onDecrement,
-            active: true,
+    final rows = <Widget>[];
+    for (var i = 0; i < offers.length; i += 2) {
+      final pair = offers.skip(i).take(2).toList();
+      if (rows.isNotEmpty) rows.add(const SizedBox(height: AppSpacing.md));
+      rows.add(
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              for (var k = 0; k < pair.length; k++) ...[
+                if (k > 0) const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(minHeight: 168),
+                    child: SpecialOfferCard(
+                      banner: pair[k],
+                      onTap: () => onTap(pair[k]),
+                    ),
+                  ),
+                ),
+              ],
+            ],
           ),
-          SizedBox(
-            width: 26,
-            child: Text(
-              '$qty',
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: AppColors.purple,
-                fontSize: 14,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ),
-          _StepBtn(
-            icon: Icons.add,
-            onTap: onIncrement,
-            active: canIncrement,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _StepBtn extends StatelessWidget {
-  const _StepBtn(
-      {required this.icon, required this.onTap, required this.active});
-
-  final IconData icon;
-  final VoidCallback? onTap;
-  final bool active;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: active ? onTap : null,
-      child: SizedBox(
-        width: 32,
-        height: 32,
-        child: Icon(
-          icon,
-          size: 16,
-          color: active ? AppColors.purple : AppColors.border,
         ),
-      ),
-    );
+      );
+    }
+    return Column(children: rows);
   }
 }
-

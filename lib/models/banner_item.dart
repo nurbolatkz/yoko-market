@@ -15,6 +15,7 @@ class BannerItem {
     this.actionValue,
     this.actionLabel,
     this.validUntil,
+    this.placement = 'hero',
   });
 
   final String id;
@@ -37,6 +38,12 @@ class BannerItem {
   final String? actionLabel;
   final DateTime? validUntil;
 
+  /// Where Home shows the banner: `hero` (top carousel, default) or
+  /// `special` (two-up «Специальные предложения» cards). Set by the backend.
+  final String placement;
+
+  bool get isSpecialOffer => placement == 'special';
+
   bool get isPromoOrGiveaway =>
       promoType == 'promotion' || promoType == 'giveaway';
 
@@ -57,6 +64,7 @@ class BannerItem {
       actionValue: json['action_value'] as String?,
       actionLabel: json['action_label'] as String?,
       validUntil: _parseDateTime(json['valid_until']),
+      placement: json['placement'] as String? ?? 'hero',
     );
   }
 }

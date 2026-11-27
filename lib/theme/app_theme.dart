@@ -31,6 +31,56 @@ abstract final class AppColors {
   static const warn = Color(0xFFB45309);
   /// Pale amber background for warning chips / banners.
   static const warnSoft = Color(0xFFFEF3C7);
+
+  // ── YO market brand (client redesign, 2026-11) ───────────────────────────────
+  // Sampled from the app icon: amber → orange → magenta → purple + yellow smile.
+  static const brandAmber = Color(0xFFFCAF03);
+  static const brandOrange = Color(0xFFF25A1D);
+  static const brandRed = Color(0xFFE3222F);
+  static const brandMagenta = Color(0xFFCC0966);
+  static const brandPurple = Color(0xFF5E0A96);
+  static const brandYellow = Color(0xFFFFD425);
+
+  /// Warm page background (top → bottom of the Home gradient).
+  static const peachTop = Color(0xFFFBE1CE);
+  static const peachBottom = Color(0xFFFDF5F1);
+
+  /// Pale peach fill for category tiles, info and offer cards.
+  static const peachSoft = Color(0xFFFCE9DF);
+
+  /// Dark text on the warm palette (headings, prices).
+  static const ink = Color(0xFF2B2A30);
+}
+
+/// Brand gradients for the YO market redesign.
+abstract final class AppGradients {
+  /// Primary actions: buttons, active nav pill, badges. Dark enough for
+  /// white bold labels.
+  static const brand = LinearGradient(
+    colors: [AppColors.brandOrange, AppColors.brandRed],
+    begin: Alignment.centerLeft,
+    end: Alignment.centerRight,
+  );
+
+  /// Full logo gradient («YO» letters, icon).
+  static const logo = LinearGradient(
+    colors: [
+      AppColors.brandAmber,
+      AppColors.brandOrange,
+      AppColors.brandRed,
+      AppColors.brandMagenta,
+    ],
+    stops: [0, 0.35, 0.65, 1],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  /// Home page background.
+  static const homeBackground = LinearGradient(
+    colors: [AppColors.peachTop, AppColors.peachBottom],
+    begin: Alignment.topCenter,
+    end: Alignment(0, 0.4),
+  );
 }
 
 abstract final class AppRadii {

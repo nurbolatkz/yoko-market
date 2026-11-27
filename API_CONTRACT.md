@@ -29,6 +29,7 @@
 | POST | `/profile/referral-code` | Bearer | InviteScreen, Profile | ready (нужен формат кода из 4 символов) |
 | GET | `/profile/referral-stats` | Bearer | InviteScreen | ready |
 | POST | `/profile/activate-referral` | Bearer | InviteCodeScreen, Cart | ready |
+| GET | `/banners` | нет | Home (hero, «Специальные предложения») | partial (нет `placement`) |
 | GET | `/loyalty/rules` | нет | YoCoin, Wallet, Profile, Home | partial (старая форма уровней; нужна месячная модель) |
 | GET | `/wallet` | Bearer | WalletScreen, Profile, Checkout | awaiting-backend |
 | GET | `/wallet/history` | Bearer | WalletScreen | awaiting-backend |
@@ -478,6 +479,26 @@
 ```
 
 > Суммы `bonus_referrer` / `bonus_user` — источник правды для текста «+1 000 YoCoin вам и другу». Клиент не хардкодит цифры.
+
+---
+
+### GET /banners — новое поле `placement`
+
+**Статус:** partial (остальные поля без изменений)  
+**Авторизация:** нет  
+**Используется в:** Home — верхняя карусель и блок «Специальные предложения» (дизайн YO market)
+
+| Поле | Значения | Если отсутствует |
+|---|---|---|
+| `placement` | `hero` — верхняя карусель; `special` — карточки «Специальные предложения» (по две в ряд) | `hero` |
+
+Для `special` карточка показывает: `discount_badge` (или `badge`) — плашка «До −30%» / «2+1», `title`, `subtitle`, стрелку и `image_url` справа. **`image_url` для `special` — вырезанное фото товара на прозрачном фоне (PNG/WebP, ~600×600)**, а не готовый баннер с текстом: текст рисует приложение.
+
+```json
+{"id": 12, "title": "Выгода на товары Yokosun", "subtitle": "Подгузники, трусики и не только",
+ "discount_badge": "До −30%", "image_url": "https://…/yokosun-pack.png", "placement": "special",
+ "promo_type": "promotion", "bg_color": "#FFFFFF"}
+```
 
 ---
 

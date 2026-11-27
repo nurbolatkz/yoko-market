@@ -41,7 +41,7 @@ void main() {
 
     // Search bar is present on the Home tab.
     expect(find.byKey(const Key('home-search')), findsOneWidget);
-    expect(find.text('Алматы'), findsOneWidget);
+    expect(find.bySemanticsLabel('YO market'), findsOneWidget);
   });
 
   testWidgets('Home and Catalog use the same product image URL', (
@@ -50,7 +50,7 @@ void main() {
     await _pumpTestApp(tester);
 
     final homeScroll = find.byKey(const Key('home-scroll'));
-    for (var index = 0; index < 4; index++) {
+    for (var index = 0; index < 10; index++) {
       await tester.drag(homeScroll, const Offset(0, -250));
       await tester.pump();
       if (find.byKey(const Key('home-product-image-p1')).evaluate().isNotEmpty) {
@@ -107,7 +107,7 @@ void main() {
 
     // Search bar is present on Home tab.
     expect(find.byKey(const Key('home-search')), findsOneWidget);
-    expect(find.text('Алматы'), findsOneWidget);
+    expect(find.bySemanticsLabel('YO market'), findsOneWidget);
   });
 
   testWidgets('Catalog filters, scrolls, and updates cart on a small phone', (
@@ -134,6 +134,8 @@ void main() {
       find.byKey(const Key('catalog-search')),
       'нет такого',
     );
+    // Catalog search is debounced (350 ms) — wait it out explicitly.
+    await tester.pump(const Duration(milliseconds: 400));
     await tester.pumpAndSettle();
     expect(find.text('Ничего не найдено'), findsOneWidget);
 

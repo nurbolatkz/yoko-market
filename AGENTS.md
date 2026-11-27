@@ -11,7 +11,7 @@ It defines:
 - Icon library (Material Icons, rounded style)
 - Logo usage rules (app header only, not on packaging)
 - Category tile pattern
-- Product card layout order (photo → price → name → package → button)
+- Product card layout order (photo → name → package → price + cart button) — YO market redesign
 - Button and interactive states (loading, error, empty, disabled)
 - Banner carousel rules and tap routing
 - Bottom navigation tab order and styling
@@ -22,7 +22,9 @@ It defines:
 
 - Run `flutter analyze` before declaring any code task complete.
 - Run `flutter test` before pushing.
-- Search field lives on the Catalog tab only — never add it to Home.
+- Search: Home has a pill search field (client's YO market design, 2026-11); submitting it opens the Catalog tab with the query.
+- Brand: YO market — orange→red gradient for primary actions (`AppGradients.brand`), warm peach background (`AppGradients.homeBackground`), logo `YoMarketLogo`. New/restyled screens use the `brand*` / `peach*` / `ink` tokens; older screens still use purple until they are restyled.
+- Bottom tabs (fixed order): Главная · Каталог · Избранное · Корзина · Профиль (`YoBottomNav`).
 - New shared UI components go in `lib/widgets/`, not inline in screens.
 
 ---
