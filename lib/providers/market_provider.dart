@@ -9,15 +9,54 @@ import '../models/product.dart';
 import '../models/product_category.dart';
 import '../services/catalog_api.dart';
 import '../utils/dio_error.dart';
+import '../services/checkout_api.dart';
+import '../services/loyalty_api.dart';
+
+typedef HomeInfo = ({int? maxCashbackPercent, int? freeDeliveryFrom});
+typedef HomeInfoLoader = Future<HomeInfo> Function();
 
 class MarketProvider with ChangeNotifier {
-  MarketProvider({CatalogDataSource? catalogDataSource})
-    : _catalogDataSource = catalogDataSource ?? CatalogApi() {
+  MarketProvider({
+    CatalogDataSource? catalogDataSource,
+    HomeInfoLoader? homeInfoLoader,
+  })  : _catalogDataSource = catalogDataSource ?? CatalogApi(),
+        _homeInfoLoader = homeInfoLoader ?? _defaultHomeInfo {
     _loadCart();
     _loadLastSeen();
   }
 
   final CatalogDataSource _catalogDataSource;
+  final HomeInfoLoader _homeInfoLoader;
+
+  // ── Home info tiles (loyalty rules + delivery settings) ─────────────────────
+  int? _maxCashbackPercent;
+  int? _freeDeliveryFrom;
+
+  /// «Кэшбэк до N%» — null until loaded (the tile then hides the number).
+  int? get maxCashbackPercent => _maxCashbackPercent;
+
+  /// «Бесплатная доставка от N ₸» — null until loaded.
+  int? get freeDeliveryFrom => _freeDeliveryFrom;
+
+  Future<void> loadHomeInfo() async {
+    final info = await _homeInfoLoader();
+    _maxCashbackPercent = info.maxCashbackPercent ?? _maxCashbackPercent;
+    _freeDeliveryFrom = info.freeDeliveryFrom ?? _freeDeliveryFrom;
+    notifyListeners();
+  }
+
+  static Future<HomeInfo> _defaultHomeInfo() async {
+    int? pct;
+    int? from;
+    await Future.wait([
+      LoyaltyApi().getRules().then((r) => pct = r.maxPercent).catchError((_) => 0),
+      CheckoutApi()
+          .getDeliverySettings()
+          .then((d) => from = (d['free_delivery_threshold'] as num?)?.toInt())
+          .catchError((_) => 0),
+    ]);
+    return (maxCashbackPercent: pct, freeDeliveryFrom: from);
+  }
 
   static const int _pageSize = 50;
   static const String _cartKey = 'cart_v1';

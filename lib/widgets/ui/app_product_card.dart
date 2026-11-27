@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../models/product.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/format.dart';
 import '../product_image.dart';
 
 /// Unified 2-column grid card used by the Home "Популярные товары" grid
@@ -48,13 +49,13 @@ class AppProductCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.surface,
           borderRadius: AppRadii.cardBorder,
-          boxShadow: const [
+          boxShadow: [
             BoxShadow(
-              color: Color(0x0D000000),
-              blurRadius: 8,
-              offset: Offset(0, 2),
+              color: AppColors.brandOrange.withValues(alpha: 0.08),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
             ),
           ],
         ),
@@ -83,14 +84,14 @@ class AppProductCard extends StatelessWidget {
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFF4444),
-                          borderRadius: BorderRadius.circular(8),
+                        decoration: const BoxDecoration(
+                          gradient: AppGradients.brand,
+                          borderRadius: BorderRadius.all(Radius.circular(8)),
                         ),
                         child: Text(
                           '-$discPct%',
                           style: const TextStyle(
-                            color: Colors.white,
+                            color: AppColors.surface,
                             fontSize: 10,
                             fontWeight: FontWeight.w800,
                           ),
@@ -98,25 +99,28 @@ class AppProductCard extends StatelessWidget {
                       ),
                     ),
                   Positioned(
-                    top: 4,
-                    right: 4,
-                    child: GestureDetector(
-                      onTap: onFavorite,
-                      child: Container(
-                        width: 28,
-                        height: 28,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withAlpha(220),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          isFavorite
-                              ? Icons.favorite_rounded
-                              : Icons.favorite_border_rounded,
-                          size: 16,
-                          color: isFavorite
-                              ? Colors.redAccent
-                              : AppColors.navyMuted,
+                    top: 0,
+                    right: 0,
+                    child: Semantics(
+                      button: true,
+                      label: isFavorite
+                          ? 'Убрать из избранного'
+                          : 'В избранное',
+                      child: GestureDetector(
+                        onTap: onFavorite,
+                        behavior: HitTestBehavior.opaque,
+                        child: SizedBox(
+                          width: 40,
+                          height: 40,
+                          child: Icon(
+                            isFavorite
+                                ? Icons.favorite_rounded
+                                : Icons.favorite_border_rounded,
+                            size: 22,
+                            color: isFavorite
+                                ? AppColors.brandRed
+                                : AppColors.ink,
+                          ),
                         ),
                       ),
                     ),
@@ -125,48 +129,14 @@ class AppProductCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 8),
-            // ── Price ──────────────────────────────────────────────────
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.baseline,
-              textBaseline: TextBaseline.alphabetic,
-              children: [
-                Text(
-                  '${product.price.toStringAsFixed(0)} ₸',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppColors.purple,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                if (hasDiscount) ...[
-                  const SizedBox(width: 4),
-                  Flexible(
-                    child: Text(
-                      '${product.originalPrice!.toStringAsFixed(0)} ₸',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: AppColors.navyMuted,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w500,
-                        decoration: TextDecoration.lineThrough,
-                      ),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-            const SizedBox(height: 3),
             // ── Name ───────────────────────────────────────────────────
             Text(
               product.title,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
-                color: AppColors.navy,
-                fontSize: 11.5,
+                color: AppColors.ink,
+                fontSize: 13,
                 fontWeight: FontWeight.w600,
                 height: 1.25,
               ),
@@ -180,27 +150,65 @@ class AppProductCard extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   color: AppColors.navyMuted,
-                  fontSize: 10,
+                  fontSize: 11,
                   fontWeight: FontWeight.w500,
                 ),
               ),
             ],
             const Spacer(),
-            // ── Add / Stepper ──────────────────────────────────────────
-            Align(
-              alignment: Alignment.centerRight,
-              child: cartQty > 0
-                  ? _CardStepper(
-                      qty: cartQty,
-                      canIncrement: onIncrement != null,
-                      onDecrement: onDecrement,
-                      onIncrement: onIncrement,
-                    )
-                  : _CardAddButton(
-                      key: Key('add-${product.id}'),
-                      canAdd: canAdd,
-                      onTap: onAdd,
-                    ),
+            // ── Price + Add / Stepper ──────────────────────────────────
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (hasDiscount)
+                        Text(
+                          formatMoney(product.originalPrice!.round()),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: AppColors.navyMuted,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                            decoration: TextDecoration.lineThrough,
+                          ),
+                        ),
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          formatMoney(product.price.round()),
+                          maxLines: 1,
+                          style: TextStyle(
+                            color: hasDiscount
+                                ? AppColors.brandRed
+                                : AppColors.ink,
+                            fontSize: 17,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 6),
+                cartQty > 0
+                    ? _CardStepper(
+                        qty: cartQty,
+                        canIncrement: onIncrement != null,
+                        onDecrement: onDecrement,
+                        onIncrement: onIncrement,
+                      )
+                    : _CardAddButton(
+                        key: Key('add-${product.id}'),
+                        canAdd: canAdd,
+                        onTap: onAdd,
+                      ),
+              ],
             ),
           ],
         ),
@@ -229,7 +237,7 @@ class _CardStepper extends StatelessWidget {
     return Container(
       height: 32,
       decoration: BoxDecoration(
-        color: AppColors.purpleSoft,
+        color: AppColors.peachSoft,
         borderRadius: BorderRadius.circular(10),
       ),
       child: Row(
@@ -242,7 +250,7 @@ class _CardStepper extends StatelessWidget {
               '$qty',
               textAlign: TextAlign.center,
               style: const TextStyle(
-                color: AppColors.purple,
+                color: AppColors.brandRed,
                 fontSize: 14,
                 fontWeight: FontWeight.w800,
               ),
@@ -280,7 +288,7 @@ class _CardStepBtn extends StatelessWidget {
         child: Icon(
           icon,
           size: 16,
-          color: active ? AppColors.purple : AppColors.border,
+          color: active ? AppColors.brandRed : AppColors.border,
         ),
       ),
     );
@@ -315,17 +323,23 @@ class _CardAddButtonState extends State<_CardAddButton> {
         scale: (_pressed && widget.canAdd) ? 0.86 : 1.0,
         duration: const Duration(milliseconds: 90),
         curve: Curves.easeInOut,
-        child: Container(
-          width: 32,
-          height: 32,
-          decoration: BoxDecoration(
-            color: widget.canAdd ? AppColors.purple : AppColors.border,
-            borderRadius: BorderRadius.circular(9),
-          ),
-          child: Icon(
-            Icons.add,
-            size: 17,
-            color: widget.canAdd ? Colors.white : AppColors.navyMuted,
+        child: Semantics(
+          button: true,
+          enabled: widget.canAdd,
+          label: 'В корзину',
+          child: Container(
+            width: 44,
+            height: 36,
+            decoration: BoxDecoration(
+              gradient: widget.canAdd ? AppGradients.brand : null,
+              color: widget.canAdd ? null : AppColors.border,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              Icons.shopping_cart_outlined,
+              size: 20,
+              color: widget.canAdd ? AppColors.surface : AppColors.navyMuted,
+            ),
           ),
         ),
       ),

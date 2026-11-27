@@ -95,13 +95,18 @@ class YokoMarketApp extends StatelessWidget {
               ..init(),
         ),
         ChangeNotifierProvider<MarketProvider>(
-          create: (_) =>
-              (marketProvider ?? MarketProvider())
-                ..loadCatalog()
-                ..loadFeatured()
-                ..loadBanners()
-                ..loadBestSellers()
-                ..loadNewArrivals(),
+          create: (_) {
+            final p = (marketProvider ?? MarketProvider())
+              ..loadCatalog()
+              ..loadFeatured()
+              ..loadBanners()
+              ..loadBestSellers()
+              ..loadNewArrivals();
+            // Home info tiles (loyalty rules, delivery threshold). Injected
+            // providers (tests) skip these network/mock calls.
+            if (marketProvider == null) p.loadHomeInfo();
+            return p;
+          },
         ),
         ChangeNotifierProvider<OrdersProvider>(
           create: (_) => OrdersProvider(),

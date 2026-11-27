@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/market_provider.dart';
+import '../theme/app_theme.dart';
 import '../providers/wishlist_provider.dart';
 import 'catalog_screen.dart';
 import 'cart_screen.dart';
 import 'favorites_screen.dart';
 import 'product_catalog_screen.dart';
 import 'profile_screen.dart';
+import '../widgets/yo_bottom_nav.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -24,74 +26,67 @@ class _MainScreenState extends State<MainScreen> {
     final marketProvider = Provider.of<MarketProvider>(context);
     final cartCount = marketProvider.cartItemCount;
     final favCount = context.watch<WishlistProvider>().count;
+    // Tab order from the client's YO market design:
+    // Главная · Каталог · Избранное · Корзина · Профиль.
+    const catalogTab = 1;
+    const cartTab = 3;
     final screens = [
       CatalogScreen(
         onCategorySelected: (category) {
           marketProvider.setSelectedCategory(category);
           marketProvider.loadProducts();
-          setState(() => _currentIndex = 1);
+          setState(() => _currentIndex = catalogTab);
         },
-        onSearchSubmitted: () => setState(() => _currentIndex = 1),
-        onCartTapped: () => setState(() => _currentIndex = 2),
+        onSearchSubmitted: () => setState(() => _currentIndex = catalogTab),
+        onCartTapped: () => setState(() => _currentIndex = cartTab),
       ),
       const ProductCatalogScreen(),
-      CartScreen(onGoToCatalog: () => setState(() => _currentIndex = 1)),
-      FavoritesScreen(onGoToCatalog: () => setState(() => _currentIndex = 1)),
+      FavoritesScreen(
+        onGoToCatalog: () => setState(() => _currentIndex = catalogTab),
+      ),
+      CartScreen(
+        onGoToCatalog: () => setState(() => _currentIndex = catalogTab),
+      ),
       const ProfileScreen(),
     ];
 
+    // Not extendBody: every tab keeps its full height; the floating bar sits
+    // on the warm page colour below the content.
     return Scaffold(
+      backgroundColor: AppColors.peachBottom,
       body: IndexedStack(index: _currentIndex, children: screens),
-      bottomNavigationBar: SafeArea(
-        top: false,
-        child: NavigationBar(
-          selectedIndex: _currentIndex,
-          onDestinationSelected: (index) =>
-              setState(() => _currentIndex = index),
-          destinations: [
-            const NavigationDestination(
-              icon: Icon(Icons.home_outlined),
-              selectedIcon: Icon(Icons.home_rounded),
-              label: 'Главная',
-            ),
-            const NavigationDestination(
-              icon: Icon(Icons.grid_view_outlined),
-              selectedIcon: Icon(Icons.grid_view_rounded),
-              label: 'Каталог',
-            ),
-            NavigationDestination(
-              icon: Badge(
-                isLabelVisible: cartCount > 0,
-                label: Text('$cartCount'),
-                child: const Icon(Icons.shopping_cart_outlined),
-              ),
-              selectedIcon: Badge(
-                isLabelVisible: cartCount > 0,
-                label: Text('$cartCount'),
-                child: const Icon(Icons.shopping_cart),
-              ),
-              label: 'Корзина',
-            ),
-            NavigationDestination(
-              icon: Badge(
-                isLabelVisible: favCount > 0,
-                label: Text('$favCount'),
-                child: const Icon(Icons.favorite_border_rounded),
-              ),
-              selectedIcon: Badge(
-                isLabelVisible: favCount > 0,
-                label: Text('$favCount'),
-                child: const Icon(Icons.favorite_rounded),
-              ),
-              label: 'Избранное',
-            ),
-            const NavigationDestination(
-              icon: Icon(Icons.person_outline),
-              selectedIcon: Icon(Icons.person),
-              label: 'Профиль',
-            ),
-          ],
-        ),
+      bottomNavigationBar: YoBottomNav(
+        currentIndex: _currentIndex,
+        onSelected: (index) => setState(() => _currentIndex = index),
+        items: [
+          const YoNavItem(
+            icon: Icons.home_outlined,
+            selectedIcon: Icons.home_rounded,
+            label: 'Главная',
+          ),
+          const YoNavItem(
+            icon: Icons.grid_view_outlined,
+            selectedIcon: Icons.grid_view_rounded,
+            label: 'Каталог',
+          ),
+          YoNavItem(
+            icon: Icons.favorite_border_rounded,
+            selectedIcon: Icons.favorite_rounded,
+            label: 'Избранное',
+            badgeCount: favCount,
+          ),
+          YoNavItem(
+            icon: Icons.shopping_cart_outlined,
+            selectedIcon: Icons.shopping_cart,
+            label: 'Корзина',
+            badgeCount: cartCount,
+          ),
+          const YoNavItem(
+            icon: Icons.person_outline,
+            selectedIcon: Icons.person,
+            label: 'Профиль',
+          ),
+        ],
       ),
     );
   }
