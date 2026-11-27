@@ -16,6 +16,8 @@ class BannerItem {
     this.actionLabel,
     this.validUntil,
     this.placement = 'hero',
+    this.imageKind = 'ready',
+    this.illustrationUrl,
   });
 
   final String id;
@@ -44,6 +46,26 @@ class BannerItem {
 
   bool get isSpecialOffer => placement == 'special';
 
+  /// Format of [imageUrl]:
+  /// - `ready` (default) — a finished banner with its text baked in; Flutter
+  ///   must not draw the title on top of it.
+  /// - `illustration` — an image without text; Flutter draws title, subtitle
+  ///   and CTA from the banner fields.
+  /// Proposed field (`image_kind`), not served by the backend yet — every
+  /// production banner is therefore treated as `ready`.
+  final String imageKind;
+
+  bool get isIllustration => imageKind == 'illustration' && imageUrl != null;
+
+  /// Transparent product cut-out for «Специальные предложения» cards — a
+  /// separate asset from [imageUrl] (proposed `illustration_url`).
+  final String? illustrationUrl;
+
+  /// Whether the banner leads somewhere that exists in the app.
+  bool get hasAction =>
+      (actionType == 'category' || actionType == 'product') &&
+      (actionValue?.isNotEmpty ?? false);
+
   bool get isPromoOrGiveaway =>
       promoType == 'promotion' || promoType == 'giveaway';
 
@@ -65,6 +87,8 @@ class BannerItem {
       actionLabel: json['action_label'] as String?,
       validUntil: _parseDateTime(json['valid_until']),
       placement: json['placement'] as String? ?? 'hero',
+      imageKind: json['image_kind'] as String? ?? 'ready',
+      illustrationUrl: json['illustration_url'] as String?,
     );
   }
 }

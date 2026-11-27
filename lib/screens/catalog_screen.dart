@@ -1,5 +1,3 @@
-import 'dart:math' show max;
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -9,7 +7,10 @@ import '../providers/auth_provider.dart';
 import '../providers/market_provider.dart';
 import '../providers/wishlist_provider.dart';
 import '../theme/app_theme.dart';
+import '../config/app_config.dart';
 import '../widgets/home/home_category_row.dart';
+import '../widgets/home/home_city_chip.dart';
+import '../widgets/home/home_hero_banner.dart';
 import '../widgets/home/home_info_tiles.dart';
 import '../widgets/home/special_offer_card.dart';
 import '../widgets/yo_market_logo.dart';
@@ -38,6 +39,33 @@ class CatalogScreen extends StatefulWidget {
 
 class _CatalogScreenState extends State<CatalogScreen> {
   final TextEditingController _searchCtrl = TextEditingController();
+  final ScrollController _scroll = ScrollController();
+
+  /// CTA of an illustration banner: only existing destinations.
+  Future<void> _openBannerAction(BannerItem banner) async {
+    final value = banner.actionValue;
+    if (value == null || value.isEmpty) return;
+    if (banner.actionType == 'category') {
+      widget.onCategorySelected(value);
+      return;
+    }
+    if (banner.actionType == 'product') {
+      final messenger = ScaffoldMessenger.of(context);
+      final product =
+          await context.read<MarketProvider>().fetchProductById(value);
+      if (!mounted) return;
+      if (product == null) {
+        messenger.showSnackBar(
+          const SnackBar(content: Text('Товар недоступен')),
+        );
+        return;
+      }
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => ProductDetailScreen(product: product)),
+      );
+    }
+  }
 
   void _openBanner(BannerItem banner) => Navigator.push(
         context,
@@ -49,6 +77,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
   @override
   void dispose() {
     _searchCtrl.dispose();
+    _scroll.dispose();
     super.dispose();
   }
 
@@ -69,10 +98,12 @@ class _CatalogScreenState extends State<CatalogScreen> {
         provider.banners.where((b) => b.isSpecialOffer).toList();
 
     return Scaffold(
+      // Below the decorative image the page continues in its bottom colour.
       backgroundColor: AppColors.peachBottom,
-      body: DecoratedBox(
-        decoration: const BoxDecoration(gradient: AppGradients.homeBackground),
-        child: SafeArea(
+      body: Stack(
+        children: [
+          _HomeBackground(scroll: _scroll),
+          SafeArea(
         bottom: false,
         child: Stack(
           children: [
@@ -88,13 +119,14 @@ class _CatalogScreenState extends State<CatalogScreen> {
             else
               CustomScrollView(
                 key: const Key('home-scroll'),
+                controller: _scroll,
                 slivers: [
                   SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+                    padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
                     sliver: SliverList.list(
                       children: [
                         const _Header(),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 8),
                         _SearchBar(
                           controller: _searchCtrl,
                           onSubmitted: (value) {
@@ -103,19 +135,26 @@ class _CatalogScreenState extends State<CatalogScreen> {
                             widget.onSearchSubmitted();
                           },
                         ),
-                        const SizedBox(height: 16),
-                        if (provider.bannersLoading)
-                          const _SkeletonBox(height: 170, radius: AppRadii.card)
-                        else if (heroBanners.isNotEmpty) ...[
-                          _BannerCarousel(banners: heroBanners),
-                          const SizedBox(height: 20),
+                        const SizedBox(height: 12),
+                        if (provider.bannersLoading) ...[
+                          const HomeHeroSkeleton(),
+                          const SizedBox(height: 14),
+                        ] else if (heroBanners.isNotEmpty) ...[
+                          HomeHeroCarousel(
+                            banners: heroBanners,
+                            onOpen: (b) => b.isIllustration && b.hasAction
+                                ? _openBannerAction(b)
+                                : _openBanner(b),
+                            onAction: _openBannerAction,
+                          ),
+                          const SizedBox(height: 14),
                         ],
                         HomeCategoryRow(
                           categories: provider.homeCategoryObjects,
                           onSelected: widget.onCategorySelected,
                           onSeeAll: () => widget.onCategorySelected('All'),
                         ),
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 14),
                         HomeInfoTiles(
                           maxCashbackPercent: provider.maxCashbackPercent,
                           freeDeliveryFrom: provider.freeDeliveryFrom,
@@ -133,82 +172,83 @@ class _CatalogScreenState extends State<CatalogScreen> {
                           ),
                         ),
                         if (specialOffers.isNotEmpty) ...[
-                          const SizedBox(height: 28),
+                          const SizedBox(height: 22),
                           const _SectionHeader(
                             title: 'Специальные предложения',
                           ),
-                          const SizedBox(height: 14),
+                          const SizedBox(height: 10),
                           _SpecialOffers(
                             offers: specialOffers,
-                            onTap: _openBanner,
+                            onTap: (b) =>
+                                b.hasAction ? _openBannerAction(b) : _openBanner(b),
                           ),
                         ],
                         if (provider.featuredLoading) ...[
-                          const SizedBox(height: 28),
+                          const SizedBox(height: 22),
                           const _SkeletonBox(height: 18, width: 160, radius: 6),
-                          const SizedBox(height: 14),
+                          const SizedBox(height: 10),
                           const _SkeletonHorizontalRow(),
                         ] else if (provider.featuredProducts.isNotEmpty) ...[
-                          const SizedBox(height: 28),
+                          const SizedBox(height: 22),
                           _SectionHeader(
                             title: 'Лучшие предложения',
                             onSeeAll: () => widget.onCategorySelected('All'),
                           ),
-                          const SizedBox(height: 14),
+                          const SizedBox(height: 10),
                           _HorizontalProductRow(
                             products: provider.featuredProducts,
                             provider: provider,
                           ),
                         ],
                         if (provider.bestSellersLoading) ...[
-                          const SizedBox(height: 28),
+                          const SizedBox(height: 22),
                           const _SkeletonBox(height: 18, width: 140, radius: 6),
                           const SizedBox(height: 14),
                           const _SkeletonHorizontalRow(),
                         ] else if (provider.bestSellerProducts.isNotEmpty) ...[
-                          const SizedBox(height: 28),
+                          const SizedBox(height: 22),
                           _SectionHeader(
                             title: 'Хиты продаж',
                             onSeeAll: () => widget.onCategorySelected('All'),
                           ),
-                          const SizedBox(height: 14),
+                          const SizedBox(height: 10),
                           _HorizontalProductRow(
                             products: provider.bestSellerProducts,
                             provider: provider,
                           ),
                         ],
                         if (provider.newArrivalsLoading) ...[
-                          const SizedBox(height: 28),
+                          const SizedBox(height: 22),
                           const _SkeletonBox(height: 18, width: 110, radius: 6),
                           const SizedBox(height: 14),
                           const _SkeletonHorizontalRow(),
                         ] else if (provider.newArrivalProducts.isNotEmpty) ...[
-                          const SizedBox(height: 28),
+                          const SizedBox(height: 22),
                           _SectionHeader(
                             title: 'Новинки',
                             onSeeAll: () => widget.onCategorySelected('All'),
                           ),
-                          const SizedBox(height: 14),
+                          const SizedBox(height: 10),
                           _HorizontalProductRow(
                             products: provider.newArrivalProducts,
                             provider: provider,
                           ),
                         ],
                         if (provider.lastSeenProducts.isNotEmpty) ...[
-                          const SizedBox(height: 28),
+                          const SizedBox(height: 22),
                           const _SectionHeader(title: 'Недавно просмотренные'),
-                          const SizedBox(height: 14),
+                          const SizedBox(height: 10),
                           _HorizontalProductRow(
                             products: provider.lastSeenProducts,
                             provider: provider,
                           ),
                         ],
-                        const SizedBox(height: 28),
+                        const SizedBox(height: 22),
                         _SectionHeader(
                           title: 'Популярные товары',
                           onSeeAll: () => widget.onCategorySelected('All'),
                         ),
-                        const SizedBox(height: 14),
+                        const SizedBox(height: 10),
                       ],
                     ),
                   ),
@@ -218,7 +258,8 @@ class _CatalogScreenState extends State<CatalogScreen> {
               ),
           ],
         ),
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -306,11 +347,11 @@ class _HomeSkeleton extends StatelessWidget {
           sliver: SliverList.list(
             children: [
               const _Header(),
+              const SizedBox(height: 8),
+              const _SkeletonBox(height: 44, radius: 22),
               const SizedBox(height: 12),
-              const _SkeletonBox(height: 48, radius: 14),
-              const SizedBox(height: 18),
-              const _SkeletonBox(height: 160, radius: 16),
-              const SizedBox(height: 24),
+              const HomeHeroSkeleton(),
+              const SizedBox(height: 14),
               // Horizontal circle skeletons for category strip
               SizedBox(
                 height: 86,
@@ -319,13 +360,13 @@ class _HomeSkeleton extends StatelessWidget {
                     padding: const EdgeInsets.only(right: 10),
                     child: Column(
                       children: [
-                        const _SkeletonBox(height: 56, width: 56, radius: 28),
+                        const _SkeletonBox(height: 60, width: 60, radius: AppRadii.image),
                         const SizedBox(height: 6),
                         Container(
                           height: 10,
                           width: 46,
                           decoration: BoxDecoration(
-                            color: AppColors.lavenderMid,
+                            color: AppColors.peachSoft,
                             borderRadius: BorderRadius.circular(4),
                           ),
                         ),
@@ -334,11 +375,11 @@ class _HomeSkeleton extends StatelessWidget {
                   )),
                 ),
               ),
-              const SizedBox(height: 28),
+              const SizedBox(height: 22),
               const _SkeletonBox(height: 18, width: 160, radius: 6),
               const SizedBox(height: 14),
               const _SkeletonHorizontalRow(),
-              const SizedBox(height: 28),
+              const SizedBox(height: 22),
               const _SkeletonBox(height: 18, width: 180, radius: 6),
               const SizedBox(height: 14),
             ],
@@ -353,68 +394,92 @@ class _HomeSkeleton extends StatelessWidget {
   }
 }
 
-// ── Network image with loading skeleton + tap-to-retry ───────────────────────
-
-class _RetryImage extends StatefulWidget {
-  const _RetryImage({
-    required this.url,
-    required this.fit,
-    this.alignment = Alignment.center,
-    this.cacheWidth = 400,
-  });
-
-  final String url;
-  final BoxFit fit;
-  final Alignment alignment;
-  // Physical pixels for the in-memory decode cache. 400 is fine for
-  // small product thumbnails; pass null or a larger value for banners.
-  final int? cacheWidth;
-
-  @override
-  State<_RetryImage> createState() => _RetryImageState();
-}
-
-class _RetryImageState extends State<_RetryImage> {
-  int _attempt = 0;
+class _Header extends StatelessWidget {
+  const _Header();
 
   @override
   Widget build(BuildContext context) {
-    return Image.network(
-      widget.url,
-      key: ValueKey('${widget.url}_$_attempt'),
-      fit: widget.fit,
-      alignment: widget.alignment,
-      cacheWidth: widget.cacheWidth,
-      loadingBuilder: (ctx, child, prog) {
-        if (prog == null) return child;
-        return const ColoredBox(color: AppColors.lavenderMid);
-      },
-      errorBuilder: (ctx, _, _) => GestureDetector(
-        onTap: () => setState(() => _attempt++),
-        child: Container(
-          color: AppColors.lavenderDeep,
-          alignment: Alignment.center,
-          child: const Icon(
-            Icons.refresh_rounded,
-            color: AppColors.purple,
-            size: 20,
+    return const SizedBox(
+      height: 44,
+      child: Row(
+        children: [
+          // Code-drawn wordmark approximating the client's «YO market» logo
+          // (no vector file provided yet) — not an exact copy.
+          YoMarketLogo(height: 26),
+          SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                if (AppConfig.uiPreview) _PreviewBadge(),
+                Flexible(child: HomeCityChip()),
+              ],
+            ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Marks UI_PREVIEW builds: Home shows fixture data, not the live API.
+class _PreviewBadge extends StatelessWidget {
+  const _PreviewBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(right: AppSpacing.xs),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: const BoxDecoration(
+        color: AppColors.warnSoft,
+        borderRadius: AppRadii.chipBorder,
+      ),
+      child: const Text(
+        'Превью',
+        style: TextStyle(
+          color: AppColors.warn,
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
         ),
       ),
     );
   }
 }
 
-// ── Header ────────────────────────────────────────────────────────────────────
+/// Client's decorative background, pinned to the top of the scroll content:
+/// it scrolls away with the page, is never repeated or stretched to the
+/// scroll height; below it the page continues in [AppColors.peachBottom]
+/// (the image's bottom-edge colour).
+class _HomeBackground extends StatelessWidget {
+  const _HomeBackground({required this.scroll});
 
-class _Header extends StatelessWidget {
-  const _Header();
+  final ScrollController scroll;
+
+  static const asset = 'assets/images/home/home_background.webp';
 
   @override
   Widget build(BuildContext context) {
-    return const Align(
-      alignment: Alignment.centerLeft,
-      child: YoMarketLogo(height: 34),
+    return AnimatedBuilder(
+      animation: scroll,
+      builder: (context, child) {
+        final offset = scroll.hasClients ? scroll.offset.clamp(0.0, 4000.0) : 0.0;
+        return Positioned(
+          top: -offset,
+          left: 0,
+          right: 0,
+          child: child!,
+        );
+      },
+      child: const IgnorePointer(
+        child: Image(
+          image: AssetImage(asset),
+          fit: BoxFit.fitWidth,
+          alignment: Alignment.topCenter,
+          excludeFromSemantics: true,
+          gaplessPlayback: true,
+        ),
+      ),
     );
   }
 }
@@ -443,8 +508,10 @@ class _SearchBar extends StatelessWidget {
           color: AppColors.navyMuted,
           size: 20,
         ),
+        isDense: true,
+        constraints: const BoxConstraints(minHeight: 44),
         contentPadding:
-            const EdgeInsets.symmetric(horizontal: 20, vertical: 13),
+            const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
         filled: true,
         fillColor: AppColors.surface,
         border: OutlineInputBorder(
@@ -465,412 +532,6 @@ class _SearchBar extends StatelessWidget {
   }
 }
 
-// ── Banner carousel ───────────────────────────────────────────────────────────
-
-class _BannerCarousel extends StatefulWidget {
-  const _BannerCarousel({required this.banners});
-
-  final List<BannerItem> banners;
-
-  @override
-  State<_BannerCarousel> createState() => _BannerCarouselState();
-}
-
-class _BannerCarouselState extends State<_BannerCarousel> {
-  final PageController _ctrl = PageController();
-  int _current = 0;
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        // 2.4:1 aspect ratio — wider landscape for image banners.
-        // Falls back to 160 px minimum so text-only banners don't collapse.
-        final height =
-            (constraints.maxWidth / 2.05).clamp(150.0, 220.0);
-        return Column(
-          children: [
-            SizedBox(
-              height: height,
-              child: PageView.builder(
-                controller: _ctrl,
-                itemCount: widget.banners.length,
-                onPageChanged: (i) =>
-                    setState(() => _current = i),
-                itemBuilder: (context, index) => Padding(
-                  padding: EdgeInsets.only(
-                    right: index < widget.banners.length - 1 ? 10 : 0,
-                  ),
-                  child: _BannerCard(
-                    banner: widget.banners[index],
-                    height: height,
-                  ),
-                ),
-              ),
-            ),
-            if (widget.banners.length > 1) ...[
-              const SizedBox(height: 10),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children:
-                    List.generate(widget.banners.length, (i) {
-                  final active = i == _current;
-                  return AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    width: active ? 18 : 6,
-                    height: 5,
-                    margin: const EdgeInsets.symmetric(horizontal: 2.5),
-                    decoration: BoxDecoration(
-                      color: active
-                          ? AppColors.brandRed
-                          : AppColors.peachTop,
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                  );
-                }),
-              ),
-            ],
-          ],
-        );
-      },
-    );
-  }
-}
-
-class _BannerCard extends StatelessWidget {
-  const _BannerCard({required this.banner, required this.height});
-
-  final BannerItem banner;
-  final double height;
-
-  void _onTap(BuildContext context) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => PromotionDetailScreen(bannerId: banner.id),
-      ),
-    );
-  }
-
-  String _ctaLabel(BannerItem b) {
-    if (b.actionLabel != null && b.actionLabel!.isNotEmpty) return b.actionLabel!;
-    return switch (b.actionType) {
-      'product' => 'Смотреть товар',
-      'category' => 'Перейти в каталог',
-      _ => 'Подробнее',
-    };
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    // Image-only banner: image carries its own design — no duplicate text overlay.
-    // A CTA chip sits in the bottom-left corner so users know it's tappable.
-    if (banner.imageUrl != null) {
-      return GestureDetector(
-        onTap: () => _onTap(context),
-        child: ClipRRect(
-          borderRadius: AppRadii.cardBorder,
-          child: SizedBox(
-            height: height,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                // Near-white bg so letterboxing is clean
-                Container(color: AppColors.homeBackground),
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    final physicalW =
-                        (constraints.maxWidth *
-                                MediaQuery.devicePixelRatioOf(context))
-                            .ceil();
-                    return _RetryImage(
-                      url: banner.imageUrl!,
-                      fit: BoxFit.contain,
-                      alignment: Alignment.center,
-                      cacheWidth: physicalW.clamp(800, 2048),
-                    );
-                  },
-                ),
-                // CTA chip bottom-left
-                Positioned(
-                  left: 12,
-                  bottom: 12,
-                  child: GestureDetector(
-                    onTap: () => _onTap(context),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withAlpha(230),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            _ctaLabel(banner),
-                            style: const TextStyle(
-                              color: AppColors.navy,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          const Icon(Icons.arrow_forward_ios_rounded, size: 10, color: AppColors.navy),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
-
-    // Text-only banner: title / subtitle / price on gradient background.
-    final textColor =
-        banner.textDark ? AppColors.navy : Colors.white;
-    final subColor = banner.textDark
-        ? AppColors.navyMuted
-        : Colors.white.withAlpha(200);
-    final eyebrowBg = banner.textDark
-        ? Colors.white.withAlpha(180)
-        : Colors.white.withAlpha(46);
-
-    final hasPrice = banner.originalPrice != null &&
-        banner.discountPrice != null;
-    final discPct = hasPrice
-        ? (100 -
-                (banner.discountPrice! / banner.originalPrice!) * 100)
-            .round()
-        : null;
-    final discLabel = banner.discountBadge ??
-        (discPct != null ? '−$discPct%' : null);
-
-    return GestureDetector(
-      onTap: () => _onTap(context),
-      child: ClipRRect(
-        borderRadius: AppRadii.cardBorder,
-        child: Container(
-          height: height,
-          decoration: _parseBackground(banner.bgColor),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (banner.badge != null) ...[
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 3,
-                    ),
-                    decoration: BoxDecoration(
-                      color: eyebrowBg,
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Text(
-                      banner.badge!,
-                      style: TextStyle(
-                        color: textColor,
-                        fontSize: 9,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.8,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                ],
-                Text(
-                  banner.title,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: textColor,
-                    fontSize: 17,
-                    fontWeight: FontWeight.w900,
-                    height: 1.15,
-                    letterSpacing: -0.3,
-                  ),
-                ),
-                if (banner.subtitle != null) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    banner.subtitle!,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: subColor,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-                const Spacer(),
-                if (hasPrice) ...[
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.baseline,
-                    textBaseline: TextBaseline.alphabetic,
-                    children: [
-                      Text(
-                        '${banner.discountPrice!} ₸',
-                        style: TextStyle(
-                          color: textColor,
-                          fontSize: 20,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        '${banner.originalPrice!} ₸',
-                        style: TextStyle(
-                          color: textColor.withAlpha(150),
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          decoration: TextDecoration.lineThrough,
-                          decorationColor: textColor.withAlpha(150),
-                        ),
-                      ),
-                      if (discLabel != null) ...[
-                        const SizedBox(width: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: eyebrowBg,
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            discLabel,
-                            style: TextStyle(
-                              color: textColor,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  GestureDetector(
-                    onTap: () => _onTap(context),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 7,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.yellow,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Text(
-                        'Купить',
-                        style: TextStyle(
-                          color: AppColors.navy,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ),
-                  ),
-                ] else if (banner.isPromoOrGiveaway) ...[
-                  Text(
-                    banner.promoType == 'giveaway'
-                        ? 'Подробнее о розыгрыше  →'
-                        : 'Подробнее об акции  →',
-                    style: TextStyle(
-                      color: textColor.withAlpha(220),
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-BoxDecoration _parseBackground(String bg) {
-  if (bg.startsWith('linear-gradient')) {
-    final colorRe = RegExp(r'(#[0-9a-fA-F]{6})\s+([\d.]+)%');
-    final matches = colorRe.allMatches(bg).toList();
-    if (matches.length >= 2) {
-      final colors = matches
-          .map((m) =>
-              Color(int.parse('0xFF${m.group(1)!.substring(1)}')))
-          .toList();
-      final stops = matches
-          .map((m) => double.parse(m.group(2)!) / 100)
-          .toList();
-      final anglePct = RegExp(r'(\d+)deg').firstMatch(bg);
-      final angleDeg = anglePct != null
-          ? double.parse(anglePct.group(1)!)
-          : 135.0;
-      final dx = _angleToDx(angleDeg);
-      final dy = _angleToDy(angleDeg);
-      return BoxDecoration(
-        borderRadius: AppRadii.cardBorder,
-        gradient: LinearGradient(
-          begin: Alignment(-dx, -dy),
-          end: Alignment(dx, dy),
-          colors: colors,
-          stops: stops,
-        ),
-      );
-    }
-  }
-  try {
-    final hex = bg.replaceFirst('#', '');
-    final colorVal = int.parse('FF$hex', radix: 16);
-    return BoxDecoration(
-      borderRadius: AppRadii.cardBorder,
-      color: Color(colorVal),
-    );
-  } catch (_) {
-    return const BoxDecoration(
-      borderRadius: AppRadii.cardBorder,
-      color: Color(0xFF1D2E81),
-    );
-  }
-}
-
-double _angleToDx(double deg) {
-  final r = (deg - 90) * 3.14159265 / 180;
-  return r.isNaN ? 0.0 : max(-1.0, _cos(r)).clamp(-1.0, 1.0);
-}
-
-double _angleToDy(double deg) {
-  final r = (deg - 90) * 3.14159265 / 180;
-  return r.isNaN ? 1.0 : _sin(r).clamp(-1.0, 1.0);
-}
-
-double _cos(double r) => _sin(r + 1.5707963);
-
-double _sin(double r) {
-  var x = r % (2 * 3.14159265);
-  if (x > 3.14159265) x -= 2 * 3.14159265;
-  if (x < -3.14159265) x += 2 * 3.14159265;
-  final sign = x >= 0 ? 1.0 : -1.0;
-  x = x.abs();
-  return sign *
-      (16 * x * (3.14159265 - x)) /
-      (5 * 3.14159265 * 3.14159265 - 4 * x * (3.14159265 - x));
-}
-
 // ── Categories ─────────────────────────────────────────────────────────────────
 
 // ── Section header ─────────────────────────────────────────────────────────────
@@ -888,7 +549,8 @@ class _SectionHeader extends StatelessWidget {
         Expanded(
           child: Text(
             title,
-            maxLines: 1,
+            // Two lines at large text sizes instead of cutting the heading.
+            maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
               color: AppColors.ink,
@@ -1079,9 +741,14 @@ class _SpecialOffers extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Two per row while the copy fits; one per row at large text sizes.
+    final scale = MediaQuery.textScalerOf(context).scale(15) / 15;
+    final cardWidth =
+        (MediaQuery.sizeOf(context).width - 2 * 16 - AppSpacing.md) / 2;
+    final perRow = cardWidth >= 165 * scale ? 2 : 1;
     final rows = <Widget>[];
-    for (var i = 0; i < offers.length; i += 2) {
-      final pair = offers.skip(i).take(2).toList();
+    for (var i = 0; i < offers.length; i += perRow) {
+      final pair = offers.skip(i).take(perRow).toList();
       if (rows.isNotEmpty) rows.add(const SizedBox(height: AppSpacing.md));
       rows.add(
         IntrinsicHeight(

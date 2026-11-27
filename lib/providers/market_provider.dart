@@ -9,7 +9,6 @@ import '../models/product.dart';
 import '../models/product_category.dart';
 import '../services/catalog_api.dart';
 import '../utils/dio_error.dart';
-import '../services/checkout_api.dart';
 import '../services/loyalty_api.dart';
 
 typedef HomeInfo = ({int? maxCashbackPercent, int? freeDeliveryFrom});
@@ -45,18 +44,23 @@ class MarketProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  /// Production source of the Home info cards.
+  ///
+  /// - Cashback: the programme maximum = the highest tier percent of the
+  ///   **real** `GET /loyalty/rules` (independent of `MOCK_LOYALTY`, which
+  ///   only drives the not-yet-shipped monthly-cashback screens).
+  /// - Free delivery: no number. The backend has three different thresholds
+  ///   (`/settings/delivery`, `app_settings.delivery_free_threshold` used by
+  ///   checkout, and per-tier values), so none is confirmed for a given
+  ///   shopper; the card links to the delivery terms instead.
   static Future<HomeInfo> _defaultHomeInfo() async {
     int? pct;
-    int? from;
-    await Future.wait([
-      LoyaltyApi().getRules().then((r) => pct = r.maxPercent).catchError((_) => 0),
-      CheckoutApi()
-          .getDeliverySettings()
-          .then((d) => from = (d['free_delivery_threshold'] as num?)?.toInt())
-          .catchError((_) => 0),
-    ]);
-    return (maxCashbackPercent: pct, freeDeliveryFrom: from);
+    try {
+      pct = (await HttpLoyaltyApi().getRules()).maxPercent;
+    } catch (_) {}
+    return (maxCashbackPercent: pct, freeDeliveryFrom: null);
   }
+
 
   static const int _pageSize = 50;
   static const String _cartKey = 'cart_v1';
@@ -205,6 +209,15 @@ class MarketProvider with ChangeNotifier {
 
   Future<({Product product, List<ProductVariant> variants})> getProductById(String id) =>
       _catalogDataSource.getProductById(id);
+
+  /// Product for a banner CTA (`action_type: product`); null if unavailable.
+  Future<Product?> fetchProductById(String id) async {
+    try {
+      return (await _catalogDataSource.getProductById(id)).product;
+    } catch (_) {
+      return null;
+    }
+  }
 
   Future<void> loadBanners() async {
     _bannersLoading = true;

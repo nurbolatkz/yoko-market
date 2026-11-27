@@ -3,9 +3,12 @@ import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/format.dart';
 
-/// «Бонусы за покупку · Кэшбэк до N%» and «Бесплатная доставка · от N ₸».
-/// Numbers come from the API (loyalty rules / delivery settings); while they
-/// are unknown the second line is simply omitted — nothing is hardcoded.
+/// «Кэшбэк до N%» and «Бесплатная доставка» cards with the client's
+/// illustrations on the right and the text on the left.
+///
+/// Numbers are shown only when confirmed by the backend; otherwise the
+/// value line falls back to neutral text — nothing from the mockup is
+/// hardcoded.
 class HomeInfoTiles extends StatelessWidget {
   const HomeInfoTiles({
     super.key,
@@ -15,10 +18,16 @@ class HomeInfoTiles extends StatelessWidget {
     required this.onDeliveryTap,
   });
 
+  /// Programme maximum (highest tier) from `/loyalty/rules`; null → no number.
   final int? maxCashbackPercent;
+
+  /// Confirmed free-delivery threshold; null → no number.
   final int? freeDeliveryFrom;
   final VoidCallback onBonusTap;
   final VoidCallback onDeliveryTap;
+
+  static const bonusAsset = 'assets/images/home/info_bonus_coupon.webp';
+  static const deliveryAsset = 'assets/images/home/info_delivery_van.webp';
 
   @override
   Widget build(BuildContext context) {
@@ -27,26 +36,33 @@ class HomeInfoTiles extends StatelessWidget {
     final bonus = _InfoTile(
       key: const Key('home-info-bonus'),
       title: 'Бонусы за покупку',
-      value: pct != null && pct > 0 ? 'Кэшбэк до $pct%' : null,
-      icon: Icons.percent_rounded,
+      value: pct != null && pct > 0 ? 'Кэшбэк до $pct%' : 'Кэшбэк YoCoin',
+      asset: bonusAsset,
       onTap: onBonusTap,
     );
     final delivery = _InfoTile(
       key: const Key('home-info-delivery'),
       title: 'Бесплатная доставка',
-      value: from != null && from > 0 ? 'от ${formatMoney(from)}' : null,
-      icon: Icons.local_shipping_rounded,
+      value: from != null && from > 0
+          ? 'от ${formatMoney(from)}'
+          : 'Условия доставки',
+      asset: deliveryAsset,
       onTap: onDeliveryTap,
     );
     return LayoutBuilder(
       builder: (context, constraints) {
-        // Side by side while «Бесплатная» fits on a line; stacked otherwise.
+        // Side by side while the title fits beside the illustration;
+        // stacked full-width cards at large text sizes.
         final scale = MediaQuery.textScalerOf(context).scale(14) / 14;
         final tileWidth = (constraints.maxWidth - AppSpacing.md) / 2;
-        if (tileWidth < 150 * scale) {
+        if (tileWidth < 160 * scale) {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [bonus, const SizedBox(height: AppSpacing.md), delivery],
+            children: [
+              bonus,
+              const SizedBox(height: AppSpacing.sm),
+              delivery,
+            ],
           );
         }
         return IntrinsicHeight(
@@ -69,73 +85,89 @@ class _InfoTile extends StatelessWidget {
     super.key,
     required this.title,
     required this.value,
-    required this.icon,
+    required this.asset,
     required this.onTap,
   });
 
   final String title;
-  final String? value;
-  final IconData icon;
+  final String value;
+  final String asset;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.surface,
-      borderRadius: AppRadii.cardBorder,
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Ink(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [AppColors.surface, AppColors.peachSoft],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+    return Semantics(
+      button: true,
+      label: '$title. $value',
+      excludeSemantics: true,
+      child: Material(
+        color: AppColors.surface,
+        borderRadius: AppRadii.cardBorder,
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Ink(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [AppColors.surface, AppColors.peachSoft],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
             ),
-          ),
-          padding: const EdgeInsets.all(AppSpacing.md),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        color: AppColors.ink,
-                        fontSize: 14,
-                        height: 1.15,
-                        fontWeight: FontWeight.w800,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: 76),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(
+                        AppSpacing.md,
+                        AppSpacing.sm,
+                        2,
+                        AppSpacing.sm,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            title,
+                            style: const TextStyle(
+                              color: AppColors.ink,
+                              fontSize: 14,
+                              height: 1.15,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            value,
+                            style: const TextStyle(
+                              color: AppColors.brandRed,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    if (value != null) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        value!,
-                        style: const TextStyle(
-                          color: AppColors.brandRed,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
+                  ),
+                  // Illustration keeps its proportions and transparency.
+                  Padding(
+                    padding: const EdgeInsets.only(right: 4),
+                    child: Image.asset(
+                      asset,
+                      width: 52,
+                      height: 50,
+                      fit: BoxFit.contain,
+                      alignment: Alignment.centerRight,
+                      excludeFromSemantics: true,
+                      errorBuilder: (_, _, _) => const SizedBox(width: 52),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: AppSpacing.sm),
-              Container(
-                width: 34,
-                height: 34,
-                decoration: const BoxDecoration(
-                  gradient: AppGradients.brand,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(icon, color: AppColors.surface, size: 19),
-              ),
-            ],
+            ),
           ),
         ),
       ),

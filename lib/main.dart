@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'config/app_config.dart';
 import 'providers/address_provider.dart';
 import 'providers/auth_provider.dart';
+import 'preview/preview_fixtures.dart';
 import 'providers/market_provider.dart';
 import 'providers/orders_provider.dart';
 import 'providers/wishlist_provider.dart';
@@ -96,7 +97,15 @@ class YokoMarketApp extends StatelessWidget {
         ),
         ChangeNotifierProvider<MarketProvider>(
           create: (_) {
-            final p = (marketProvider ?? MarketProvider())
+            // UI_PREVIEW: fixture catalog/banners (real API snapshot + labelled
+            // demo banners). Production always reads the live API.
+            final p = (marketProvider ??
+                (AppConfig.uiPreview
+                    ? MarketProvider(
+                        catalogDataSource: PreviewCatalogDataSource(),
+                        homeInfoLoader: previewHomeInfo,
+                      )
+                    : MarketProvider()))
               ..loadCatalog()
               ..loadFeatured()
               ..loadBanners()
